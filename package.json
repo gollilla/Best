@@ -1,5 +1,5 @@
 {
-  "name": "best",
+  "name": "@gollilla/best",
   "version": "0.1.0",
   "description": "Best - Bedrock Edition Server Testing library",
   "main": "dist/index.js",
