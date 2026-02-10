@@ -15,7 +15,7 @@ Bedrock Edition Server Testing - 統合版マインクラフトサーバー用�
 ## インストール
 
 ```bash
-npm install best
+npm install @gollilla/best
 ```
 
 ## クイックスタート
@@ -24,7 +24,7 @@ npm install best
 
 ```typescript
 // best.config.ts
-import { defineConfig } from 'best';
+import { defineConfig } from '@gollilla/best';
 
 export default defineConfig({
   host: 'localhost',
@@ -65,7 +65,7 @@ describe('接続テスト', () => {
 ### 3. テストを実行
 
 ```bash
-npx best
+npx @gollilla/best
 ```
 
 ## Agent API
@@ -75,7 +75,7 @@ npx best
 ### 基本的な使い方
 
 ```typescript
-import { Agent, createAgent } from 'best';
+import { Agent, createAgent } from '@gollilla/best';
 
 // 方法1: 直接作成
 const agent = new Agent({
@@ -378,7 +378,7 @@ Markdown形式で自然言語によるシナリオテストを記述できます
 
 ```typescript
 // best.config.ts
-import { defineConfig } from 'best';
+import { defineConfig } from '@gollilla/best';
 
 export default defineConfig({
   host: 'localhost',
@@ -402,9 +402,9 @@ export default defineConfig({
 ### シナリオ実行
 
 ```bash
-npx best scenario
-npx best scenario scenarios/shop.scenario.md
-npx best scenario --verbose
+npx @gollilla/best scenario
+npx @gollilla/best scenario scenarios/shop.scenario.md
+npx @gollilla/best scenario --verbose
 ```
 
 ## 設定オプション
@@ -439,10 +439,10 @@ interface BestConfig {
 ## CLI
 
 ```bash
-npx best                              # テスト実行
-npx best scenario                     # シナリオ実行
-npx best scenario path/to/file.md    # 特定シナリオ
-npx best scenario --verbose          # 詳細ログ
+npx @gollilla/best                              # テスト実行
+npx @gollilla/best scenario                     # シナリオ実行
+npx @gollilla/best scenario path/to/file.md    # 特定シナリオ
+npx @gollilla/best scenario --verbose          # 詳細ログ
 ```
 
 ## ライセンス
