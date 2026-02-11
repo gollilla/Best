@@ -35,20 +35,6 @@ agent:
   commandPrefix: "/"
 ```
 
-設定ファイルを使ってAgentを作成：
-
-```go
-// 設定ファイルを読み込み
-cfg, err := best.LoadConfig()
-if err != nil {
-    cfg = best.DefaultConfig()
-}
-
-// 設定からAgentを作成
-agent := best.NewAgentFromConfig(cfg)
-agent.Connect()
-```
-
 ### 基本的な接続
 
 ```go
@@ -64,11 +50,7 @@ import (
 
 func main() {
     // エージェント作成
-    agent := best.NewAgent(
-        best.WithHost("localhost"),
-        best.WithPort(19132),
-        best.WithUsername("TestBot"),
-    )
+    agent := best.createAgent("TestBot")
 
     // イベントリスナー登録
     agent.Emitter().On(best.EventChat, func(data best.EventData) {
