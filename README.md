@@ -1,450 +1,305 @@
-# Best
+# Best - Bedrock Edition Server Testing
 
-Bedrock Edition Server Testing - 統合版マインクラフトサーバー用テストライブラリ
+統合版マインクラフト（Minecraft Bedrock Edition）のサーバー用テストライブラリのGo実装です。
 
 ## 特徴
 
-- Agentによるサーバー接続・操作
-- 豊富なアサーション (接続、座標、チャット、コマンド、フォーム)
-- タスクランナーによる処理の順次実行
-- チャット/コマンドハンドラー
-- 自然言語によるシナリオテスト (Markdown形式)
-- LLM統合 (OpenAI / Anthropic)
-- TypeScript完全対応
+- **仮想プレイヤーエージェント**: Bedrockサーバーに接続する仮想プレイヤー
+- **包括的アサーションフレームワーク**: 15+のアサーションカテゴリ
+- **イベント駆動アーキテクチャ**: チャネルベースの非同期イベント処理
+- **テストランナー**: describe/test/itスタイルのテストフレームワーク
+- **シナリオランナー**: MarkdownベースのシナリオとLLM統合
+- **Gophertunnel**: 最新のBedrock Editionプロトコルサポート
 
 ## インストール
 
 ```bash
-npm install @gollilla/best
+go get github.com/gollilla/best
 ```
 
 ## クイックスタート
 
-### 1. 設定ファイルを作成
+### 設定ファイル
 
-```typescript
-// best.config.ts
-import { defineConfig } from '@gollilla/best';
+`best.config.yml` を作成して、サーバー接続情報を設定できます：
 
-export default defineConfig({
-  host: 'localhost',
-  port: 19132,
-  offline: true,
-  timeout: 30000,
-});
+```yaml
+server:
+  host: localhost
+  port: 19132
+
+agent:
+  username: TestBot
+  offline: false
+  timeout: 30
+  commandPrefix: "/"
 ```
 
-### 2. テストを作成
+設定ファイルを使ってAgentを作成：
 
-```typescript
-// tests/example.test.ts
-describe('接続テスト', () => {
-  beforeEach(async ({ player }) => {
-    await player.connect();
-  });
+```go
+// 設定ファイルを読み込み
+cfg, err := best.LoadConfig()
+if err != nil {
+    cfg = best.DefaultConfig()
+}
 
-  afterEach(async ({ player }) => {
-    await player.disconnect();
-  });
-
-  test('サーバーに接続できる', async ({ player }) => {
-    player.expect.toBeConnected();
-  });
-
-  test('チャットを送信できる', async ({ player }) => {
-    player.chat('Hello, World!');
-  });
-
-  test('コマンドが実行できる', async ({ player }) => {
-    const result = await player.command('/say Hello');
-    player.expect.command(result).toSucceed();
-  });
-});
+// 設定からAgentを作成
+agent := best.NewAgentFromConfig(cfg)
+agent.Connect()
 ```
 
-### 3. テストを実行
+### 基本的な接続
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "time"
+
+    "github.com/gollilla/best"
+)
+
+func main() {
+    // エージェント作成
+    agent := best.NewAgent(
+        best.WithHost("localhost"),
+        best.WithPort(19132),
+        best.WithUsername("TestBot"),
+    )
+
+    // イベントリスナー登録
+    agent.Emitter().On(best.EventChat, func(data best.EventData) {
+        msg := data.(*best.ChatMessage)
+        fmt.Printf("[%s]: %s\n", msg.Sender, msg.Message)
+    })
+
+    // 接続
+    if err := agent.Connect(); err != nil {
+        panic(err)
+    }
+    defer agent.Disconnect()
+
+    // スポーン待機
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    agent.WaitForSpawn(ctx)
+
+    // チャット送信
+    agent.Chat("Hello, world!")
+
+    // コマンド実行
+    output, _ := agent.Command("/help")
+    fmt.Println(output.Output)
+}
+```
+
+### イベント処理
+
+```go
+// チャットメッセージを待機
+ctx := context.WithTimeout(context.Background(), 5*time.Second)
+msg, err := agent.WaitForChat(ctx, func(m *best.ChatMessage) bool {
+    return strings.Contains(m.Message, "hello")
+})
+```
+
+### テストランナー
+
+Jest/Mocha風のテストフレームワークを提供します。最もシンプルな使い方：
+
+```go
+package main
+
+import (
+    "github.com/gollilla/best"
+)
+
+func main() {
+    runner := best.NewRunner(nil)
+    var agent *best.Agent
+
+    best.BeforeAll(func(ctx *best.TestContext) {
+        // 名前だけ指定！設定は best.config.yml から自動読み込み
+        agent = best.CreateAgent("TestBot")
+        agent.Connect()
+    })
+
+    best.AfterAll(func(ctx *best.TestContext) {
+        agent.Disconnect()
+    })
+
+    best.Describe("Server Tests", func() {
+        best.It("should connect", func(ctx *best.TestContext) {
+            if !agent.IsConnected() {
+                panic("not connected")
+            }
+        })
+
+        best.It("should receive title", func(ctx *best.TestContext) {
+            go func() {
+                agent.Command("/title @s title Hello")
+            }()
+            agent.Expect().Title().ToReceive("Hello", 3*time.Second)
+        })
+    })
+
+    runner.Run()
+}
+```
+
+**3つの方法でAgentを作成**:
+
+```go
+// 方法1: 最もシンプル - 名前だけ指定（推奨）
+agent := best.CreateAgent("TestBot")  // best.config.yml の設定を使用
+
+// 方法2: 名前 + オプション（設定を一部上書き）
+agent := best.CreateAgent("Player1", best.WithHost("example.com"))
+
+// 方法3: 完全に手動
+agent := best.NewAgent(
+    best.WithHost("localhost"),
+    best.WithPort(19132),
+    best.WithUsername("TestBot"),
+)
+```
+
+**複数Agent**:
+
+```go
+var agent1, agent2 *best.Agent
+
+best.BeforeAll(func(ctx *best.TestContext) {
+    agent1 = best.CreateAgent("Player1")
+    agent2 = best.CreateAgent("Player2")
+    agent1.Connect()
+    agent2.Connect()
+})
+```
+
+**特徴**:
+- 🚀 最小限のコード - 名前だけ指定すれば動く
+- 📝 設定ファイルで接続情報を一元管理
+- 🔧 必要に応じてオプションで上書き可能
+- 👥 複数Agentの同時使用に対応
+- 🎯 Jest/Mocha風のdescribe/test/it構文
+
+## プロジェクト構造
+
+```
+best-go/
+├── cmd/best/              # CLIエントリーポイント
+├── pkg/
+│   ├── agent/             # Agentコア実装
+│   ├── events/            # イベントシステム
+│   ├── protocol/          # Gophertunnelラッパー
+│   ├── state/             # プレイヤー状態管理
+│   ├── assertions/        # アサーションフレームワーク
+│   ├── runner/            # テストランナー
+│   ├── scenario/          # シナリオランナー
+│   ├── llm/               # LLM統合
+│   ├── config/            # 設定管理 ✅
+│   ├── types/             # 共通型定義
+│   └── utils/             # ユーティリティ
+├── examples/              # 使用例
+│   ├── test_runner/       # テストランナーの例
+│   ├── title_assertions/  # タイトルアサーションの例
+│   └── ...
+├── best.go                # メインパッケージ
+├── best.config.example.yml # 設定ファイルのテンプレート
+└── go.mod
+```
+
+## 実装状況
+
+### Phase 1: 基盤 ✅
+- [x] Go moduleセットアップ
+- [x] イベントシステム (pkg/events/)
+- [x] プロトコル層 (pkg/protocol/)
+- [x] プレイヤー状態 (pkg/state/)
+- [x] 基本Agent (pkg/agent/)
+
+### Phase 2: コアアクション ✅
+- [x] Agentアクション (Chat, Command, Goto等)
+- [x] ワールド管理 (pkg/world/)
+- [x] 追加パケットハンドラー (40+パケット対応)
+- [x] タスクランナー
+
+### Phase 3: アサーション ✅
+- [x] AssertionContext
+- [x] 基本アサーション (Position, Chat, Command)
+- [x] インベントリアサーション
+- [x] プレイヤー状態アサーション (Health, Hunger, Effect, Gamemode, Permission, Tag)
+- [x] UI/表示アサーション (Title, Subtitle, Actionbar, Scoreboard)
+- [x] ブロック/エンティティアサーション
+
+### Phase 4: テストランナー ✅
+- [x] TestRunner (describe/test/it)
+- [x] フック (BeforeAll, AfterAll, BeforeEach, AfterEach)
+- [x] Skip/Only機能
+- [x] Reporter (ConsoleReporter)
+- [x] グローバル関数API
+- [x] リトライロジック
+- [x] タイムアウト処理
+- [x] 設定ファイルサポート (best.config.yml)
+- [x] 柔軟なAgent管理（複数Agent対応）
+
+### Phase 5-7（予定）
+- [ ] シナリオランナー
+- [ ] LLM統合
+- [ ] CLI
+
+## アサーション一覧
+
+### 基本アサーション
+- **Position**: `toBe`, `toBeNear`, `toReach`
+- **Chat**: `toReceive`, `notToReceive`, `toReceiveInOrder`, `toContain`
+- **Command**: `toSucceed`, `toFail`, `toContain`
+
+### プレイヤー状態アサーション
+- **Health**: `toBe`, `toBeAbove`, `toBeBelow`, `toBeFull`
+- **Hunger**: `toBe`, `toBeAbove`, `toBeFull`
+- **Effect**: `toHave`, `notToHave`, `toHaveLevel`
+- **Gamemode**: `toBe`, `toBeSurvival`, `toBeCreative`
+- **Permission**: `toBeOperator`, `toHaveLevel`
+- **Tag**: `toHave`, `notToHave`
+
+### インベントリアサーション
+- **Inventory**: `toHaveItem`, `toHaveItemCount`, `toBeEmpty`
+
+### UI/表示アサーション
+- **Title**: `toReceive`, `toReceiveSubtitle`, `toReceiveActionbar`, `toContain`
+- **Scoreboard**: `toHaveObjective`, `toHaveScore`, `toHaveScoreAbove`
+
+詳細は [pkg/assertions/](pkg/assertions/) を参照してください。
+
+## 例の実行
 
 ```bash
-npx @gollilla/best
+# 基本例
+cd examples/basic
+go run main.go
+
+# テストランナー例
+cd examples/test_runner
+go run main.go
+
+# タイトルアサーション例
+cd examples/title_assertions
+go run main.go
 ```
 
-## Agent API
-
-`Agent`はサーバーに接続する仮想プレイヤーです。アサーション、タスクランナー、高レベルアクションを内蔵しています。
-
-### 基本的な使い方
-
-```typescript
-import { Agent, createAgent } from '@gollilla/best';
-
-// 方法1: 直接作成
-const agent = new Agent({
-  host: 'localhost',
-  port: 19132,
-  username: 'TestBot',
-  offline: true,
-});
-await agent.connect();
-
-// 方法2: 設定ファイルから作成（自動接続）
-const agent = await createAgentFromConfig('TestBot');
-```
-
-### アサーション
-
-```typescript
-// === 基本アサーション ===
-
-// 接続状態
-agent.expect.toBeConnected();
-agent.expect.toBeDisconnected();
-
-// 座標
-agent.expect.position.toBe({ x: 100, y: 64, z: 100 });
-agent.expect.position.toBeNear({ x: 100, y: 64, z: 100 }, 5);
-await agent.expect.position.toReach({ x: 0, y: 64, z: 0 }, { timeout: 5000 });
-
-// チャット
-await agent.expect.chat.toReceive('Hello', { timeout: 5000 });
-await agent.expect.chat.toReceive(/welcome/i);
-
-// コマンド
-const result = await agent.command('/say test');
-agent.expect.command(result).toSucceed();
-
-// フォーム
-const form = await agent.expect.form.toReceive({ timeout: 5000 });
-form.toHaveTitle('メニュー');
-await form.clickButton(0);
-
-// === プレイヤー状態系 ===
-
-// インベントリ
-agent.expect.inventory.toHaveItem('diamond');
-agent.expect.inventory.toHaveItemCount('diamond', 10);
-agent.expect.inventory.toHaveEnchantedItem('diamond_sword', 'sharpness', 5);
-
-// 体力
-agent.expect.health.toBeFull();
-agent.expect.health.toBeAbove(10);
-await agent.expect.health.toReach(20, { timeout: 5000 });
-
-// エフェクト
-agent.expect.effect.toHave('speed');
-agent.expect.effect.toHaveLevel('strength', 2);
-
-// ゲームモード
-agent.expect.gamemode.toBeSurvival();
-agent.expect.gamemode.toBeCreative();
-await agent.expect.gamemode.toChangeTo('creative', { timeout: 5000 });
-
-// 権限レベル
-agent.expect.permission.toBeOperator();
-
-// タグ
-agent.expect.tag.toHave('vip');
-agent.expect.tag.toHaveAll('team_red', 'player');
-
-// === ワールド/ブロック系 ===
-
-// ブロック
-agent.expect.block.toBeAt({ x: 100, y: 64, z: 100 }, 'stone');
-agent.expect.block.toBeAirAt({ x: 100, y: 65, z: 100 });
-await agent.expect.block.toChangeTo({ x: 100, y: 64, z: 100 }, 'diamond_block');
-
-// エンティティ
-agent.expect.entity.toExist('zombie');
-agent.expect.entity.toBeNearby('creeper', 10);
-await agent.expect.entity.toSpawn('pig', { nearPlayer: 20 });
-
-// スコアボード
-agent.expect.scoreboard.toHaveValue('kills', 5);
-agent.expect.scoreboard.toHaveMinValue('money', 100);
-
-// === UI/表示系 ===
-
-// タイトル
-await agent.expect.title.toReceive('ゲーム開始');
-await agent.expect.subtitle.toReceive(/準備完了/);
-await agent.expect.actionbar.toReceive('残り時間: 60秒');
-
-// サウンド
-await agent.expect.sound.toPlay('mob.zombie.say');
-await agent.expect.sound.notToPlay('mob.wither.spawn', { duration: 5000 });
-
-// パーティクル
-await agent.expect.particle.toSpawn('minecraft:heart', { nearPlayer: 5 });
-
-// === イベント系 ===
-
-// 接続
-await agent.expect.connection.toBeKicked({ reason: /不正行為/ });
-await agent.expect.connection.notToBeKicked({ duration: 5000 });
-
-// テレポート
-await agent.expect.teleport.toOccur({ minDistance: 10 });
-await agent.expect.teleport.toDestination({ x: 0, y: 64, z: 0 });
-
-// ディメンション
-agent.expect.dimension.toBeOverworld();
-await agent.expect.dimension.toChangeTo('nether');
-
-// 死亡/リスポーン
-await agent.expect.death.toOccur({ timeout: 10000 });
-await agent.expect.respawn.toOccur();
-
-// === タイミング系 ===
-
-// 時間内完了
-await agent.expect.timing.toCompleteWithin(
-  async () => agent.command('/tp @s 0 64 0'),
-  1000
-);
-
-// シーケンス
-await agent.expect.sequence.toOccurInOrder([
-  { event: 'chat', filter: (m) => m.message.includes('開始') },
-  { event: 'form' },
-  { event: 'chat', filter: (m) => m.message.includes('完了') },
-]);
-
-// 条件待機
-await agent.expect.condition.toBeMetWithin(
-  () => agent.health >= 20,
-  5000
-);
-```
-
-### 高レベルアクション
-
-```typescript
-// テレポート
-await agent.goto({ x: 100, y: 64, z: 100 });
-
-// 視線を向ける
-await agent.lookAt({ x: 0, y: 64, z: 0 });
-
-// ブロック設置
-await agent.placeBlock({ x: 100, y: 65, z: 100 }, 'stone');
-
-// ブロック破壊（実プレイヤー操作）
-const result = await agent.breakBlock({ x: 100, y: 65, z: 100 });
-if (result.success) {
-  console.log('破壊成功');
-} else {
-  console.log('破壊失敗:', result.reason);
-}
-
-// ブロック破壊（オプション付き）
-const controller = new AbortController();
-await agent.breakBlock(
-  { x: 100, y: 65, z: 100 },
-  {
-    toolMultiplier: 6.0,  // ツール倍率（素手=1.0, 鉄ピッケル≈6.0）
-    signal: controller.signal,  // キャンセル用
-    onProgress: (progress) => {
-      console.log(`進捗: ${Math.floor(progress * 100)}%`);
-    },
-  }
-);
-
-// ブロック破壊（コマンド版 - クリエイティブモード用、即座に破壊）
-await agent.breakBlockInstant({ x: 100, y: 65, z: 100 });
-
-// チャット
-agent.say('Hello!');
-agent.chat('Hello!'); // sayと同じ
-```
-
-### ブロック破壊イベント
-
-```typescript
-// 破壊開始
-agent.on('block_break_start', ({ position }) => {
-  console.log(`破壊開始: ${position.x}, ${position.y}, ${position.z}`);
-});
-
-// 破壊完了
-agent.on('block_break_complete', ({ position }) => {
-  console.log(`破壊完了: ${position.x}, ${position.y}, ${position.z}`);
-});
-
-// 破壊中断
-agent.on('block_break_abort', ({ position }) => {
-  console.log(`破壊中断: ${position.x}, ${position.y}, ${position.z}`);
-});
-```
-
-### ワールド情報
-
-```typescript
-// 指定座標のブロックを取得
-const block = agent.getBlock(100, 64, 100);
-console.log(block?.name); // "minecraft:stone"
-
-// ブロック名だけ取得
-const name = agent.getBlockName(100, 64, 100);
-
-// 足元のブロック
-const below = agent.getBlockBelow();
-
-// 前方のブロック（視線方向）
-const front = agent.getBlockInFront(2); // 2ブロック先
-
-// 通行可能か確認
-if (agent.isPassable(100, 65, 100)) {
-  // 空気や水など
-}
-
-// 固体ブロックか確認
-if (agent.isSolid(100, 64, 100)) {
-  // 石や土など
-}
-
-// 周囲のブロック情報
-const blocks = agent.getBlocksAround(2); // 半径2ブロック
-
-// Worldオブジェクトに直接アクセス
-console.log(agent.world.loadedChunkCount);
-
-// ブロックの破壊データを取得
-const breakData = agent.world.getBlockBreakData(100, 64, 100, 1.0);
-console.log(breakData.baseTime);    // 破壊時間（秒）
-console.log(breakData.instant);     // 即座に破壊可能か
-console.log(breakData.unbreakable); // 破壊不可能か（岩盤など）
-```
-
-### タスクランナー
-
-```typescript
-agent.tasks
-  .add('初期位置へ移動', async (a) => {
-    await a.goto({ x: 0, y: 64, z: 0 });
-  })
-  .add('ブロック設置', async (a) => {
-    await a.placeBlock({ x: 0, y: 65, z: 0 }, 'stone');
-  })
-  .add('確認', async (a) => {
-    a.expect.position.toBeNear({ x: 0, y: 64, z: 0 }, 5);
-  });
-
-await agent.tasks.runAll();
-```
-
-### チャット/コマンドハンドラー
-
-```typescript
-// チャットパターンに反応
-agent.onChat(/こんにちは/, (msg, reply) => {
-  reply(`${msg.sender}さん、こんにちは！`);
-});
-
-// コマンドに反応 (!help で発火)
-agent.onCommand('help', (args, reply) => {
-  reply('使い方: !help, !status');
-});
-
-// ハンドラーを有効化
-agent.startAgent();
-
-// 停止
-agent.stopAgent();
-```
-
-## シナリオテスト
-
-Markdown形式で自然言語によるシナリオテストを記述できます。
-
-### シナリオファイル
-
-```markdown
-<!-- scenarios/shop.scenario.md -->
-# ショップ購入テスト
-
-## プレイヤー
-- Alice: 購入者
-- Bob: 店主
-
-## ステップ
-1. Aliceがサーバーに接続する
-2. Bobがサーバーに接続する
-3. Aliceが `/shop` コマンドを実行する
-4. **確認**: Aliceにフォームが表示される
-5. Aliceがフォームで「ダイヤモンド」をクリックする
-6. **確認**: Aliceが「購入完了」メッセージを受信する
-```
-
-### シナリオ設定
-
-```typescript
-// best.config.ts
-import { defineConfig } from '@gollilla/best';
-
-export default defineConfig({
-  host: 'localhost',
-  port: 19132,
-
-  scenario: {
-    match: ['scenarios/**/*.scenario.md'],
-    stepTimeout: 30000,
-    totalTimeout: 300000,
-
-    // LLM設定（オプション）
-    llm: {
-      provider: 'anthropic',
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      model: 'claude-sonnet-4-20250514',
-    },
-  },
-});
-```
-
-### シナリオ実行
-
-```bash
-npx @gollilla/best scenario
-npx @gollilla/best scenario scenarios/shop.scenario.md
-npx @gollilla/best scenario --verbose
-```
-
-## 設定オプション
-
-```typescript
-interface BestConfig {
-  // サーバー設定
-  host: string;
-  port?: number;           // デフォルト: 19132
-  offline?: boolean;       // デフォルト: true
-  timeout?: number;        // デフォルト: 30000
-
-  // テスト設定
-  testMatch?: string[];    // デフォルト: ['**/*.test.ts']
-  retries?: number;        // デフォルト: 0
-  bail?: boolean;          // デフォルト: false
-
-  // シナリオ設定
-  scenario?: {
-    match?: string[];
-    stepTimeout?: number;
-    totalTimeout?: number;
-    llm?: {
-      provider: 'openai' | 'anthropic';
-      apiKey: string;
-      model?: string;
-    };
-  };
-}
-```
-
-## CLI
-
-```bash
-npx @gollilla/best                              # テスト実行
-npx @gollilla/best scenario                     # シナリオ実行
-npx @gollilla/best scenario path/to/file.md    # 特定シナリオ
-npx @gollilla/best scenario --verbose          # 詳細ログ
-```
+**注意**: Minecraftサーバーが `localhost:19132` で実行されている必要があります。
 
 ## ライセンス
 
-MIT
+MIT License
+
+## 参考
+
+- [Gophertunnel](https://github.com/sandertv/gophertunnel) - Bedrock Editionプロトコル実装
+- [Best (TypeScript版)](https://github.com/gollilla/best) - 元のTypeScript実装

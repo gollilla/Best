@@ -1,2 +1,36 @@
-node_modules/
-dist/
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Build artifacts
+/bin/
+/build/
+
+# Example binaries
+examples/*/player_state_demo
+examples/*/attack_demo
+examples/*/*.exe
+examples/*/*_demo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
