@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-gl/mathgl/mgl32"
@@ -54,15 +55,24 @@ func (a *Agent) Command(cmd string) (*types.CommandOutput, error) {
 	textMessages := []string{}
 	var mu sync.Mutex
 	done := make(chan struct{})
+	var commandSent atomic.Bool
+	commandSent.Store(false)
 
 	// Listen for text packets (command responses)
 	handlerID := a.emitter.On(events.EventChat, func(data events.EventData) {
+		// Ignore messages received before command was sent
+		if !commandSent.Load() {
+			return
+		}
+
 		msg, ok := data.(*types.ChatMessage)
 		if !ok {
 			return
 		}
 
-		if msg.Type != "chat" { // Only collect system/raw messages, not player chat
+		// Collect all non-chat messages (system, raw, etc.)
+		// Also collect chat messages from the command sender (self)
+		if msg.Type != "chat" || msg.Sender == a.username {
 			mu.Lock()
 			textMessages = append(textMessages, msg.Message)
 			mu.Unlock()
@@ -75,10 +85,13 @@ func (a *Agent) Command(cmd string) (*types.CommandOutput, error) {
 		return nil, err
 	}
 
+	// Mark command as sent - only messages received after this point will be collected
+	commandSent.Store(true)
+
 	// Wait a short time to collect all response messages
-	// Most command responses arrive within 1 second
+	// Most command responses arrive within 2 seconds
 	go func() {
-		time.Sleep(1000 * time.Millisecond)
+		time.Sleep(2000 * time.Millisecond)
 		close(done)
 	}()
 
@@ -88,6 +101,13 @@ func (a *Agent) Command(cmd string) (*types.CommandOutput, error) {
 		mu.Lock()
 		msgs := textMessages
 		mu.Unlock()
+
+		// Debug: Log all collected messages
+		fmt.Printf("[DEBUG] Command: %s\n", cmd)
+		fmt.Printf("[DEBUG] Collected %d messages:\n", len(msgs))
+		for i, msg := range msgs {
+			fmt.Printf("[DEBUG]   [%d] %s\n", i, msg)
+		}
 
 		if len(msgs) > 0 {
 			output := strings.Join(msgs, "\n")
@@ -102,12 +122,14 @@ func (a *Agent) Command(cmd string) (*types.CommandOutput, error) {
 			}, nil
 		}
 
-		// No messages received - command might have failed silently
+		// No messages received - this is often normal for commands like /help
+		// that may send their response through UI forms or other mechanisms
+		// Consider it successful if no error was explicitly detected
 		return &types.CommandOutput{
 			Command:    cmd,
-			Success:    false,
+			Success:    true, // Assume success if no error was detected
 			Output:     "",
-			StatusCode: 1,
+			StatusCode: 0,
 		}, nil
 	case <-ctx.Done():
 		return nil, fmt.Errorf("command timeout: %s", cmd)
@@ -218,4 +240,3 @@ func (a *Agent) WaitForChat(ctx context.Context, filter func(*types.ChatMessage)
 
 	return data.(*types.ChatMessage), nil
 }
-

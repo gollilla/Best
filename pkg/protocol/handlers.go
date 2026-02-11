@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
@@ -32,18 +33,23 @@ func (c *Client) handleInventoryContent(pk packet.Packet) {
 	// Convert items
 	items := make([]types.InventoryItem, 0, len(p.Content))
 	for i, item := range p.Content {
-		if item.Stack.ItemType.NetworkID == 0 {
+		networkID := item.Stack.ItemType.NetworkID
+		count := item.Stack.Count
+
+		if networkID == 0 {
 			continue // Skip air/empty slots
 		}
 
 		inventoryItem := types.InventoryItem{
-			ID:    fmt.Sprintf("item:%d", item.Stack.ItemType.NetworkID), // Use NetworkID for now
-			Count: int32(item.Stack.Count),
+			ID:    GetItemID(networkID),
+			Count: int32(count),
 			Slot:  int32(i),
 		}
 		items = append(items, inventoryItem)
 	}
 
+	// IMPORTANT: Always emit the inventory update, even if empty
+	// This allows the agent to detect when inventory is cleared
 	c.emitter.Emit(events.EventInventoryUpdate, items)
 }
 
@@ -51,7 +57,10 @@ func (c *Client) handleInventoryContent(pk packet.Packet) {
 func (c *Client) handleInventorySlot(pk packet.Packet) {
 	p := pk.(*packet.InventorySlot)
 
-	if p.NewItem.Stack.ItemType.NetworkID == 0 {
+	networkID := p.NewItem.Stack.ItemType.NetworkID
+	count := p.NewItem.Stack.Count
+
+	if networkID == 0 {
 		// Empty slot
 		c.emitter.Emit(events.EventInventorySlotUpdate, types.InventoryItem{
 			Slot: int32(p.Slot),
@@ -60,8 +69,8 @@ func (c *Client) handleInventorySlot(pk packet.Packet) {
 	}
 
 	item := types.InventoryItem{
-		ID:    fmt.Sprintf("item:%d", p.NewItem.Stack.ItemType.NetworkID), // Use NetworkID for now
-		Count: int32(p.NewItem.Stack.Count),
+		ID:    GetItemID(networkID),
+		Count: int32(count),
 		Slot:  int32(p.Slot),
 	}
 
@@ -218,4 +227,89 @@ func (c *Client) handleRemoveObjective(pk packet.Packet) {
 	}
 
 	c.emitter.Emit(events.EventScoreUpdate, removeInfo)
+}
+
+// handleModalFormRequest handles form display requests
+func (c *Client) handleModalFormRequest(pk packet.Packet) {
+	p := pk.(*packet.ModalFormRequest)
+
+	// Parse the JSON form data
+	var formData map[string]interface{}
+	if err := json.Unmarshal([]byte(p.FormData), &formData); err != nil {
+		fmt.Printf("[ERROR] Failed to parse form JSON: %v\n", err)
+		return
+	}
+
+	formType, _ := formData["type"].(string)
+	title, _ := formData["title"].(string)
+
+	var form types.Form
+
+	switch formType {
+	case "modal":
+		// ModalForm: Simple yes/no dialog
+		content, _ := formData["content"].(string)
+		button1, _ := formData["button1"].(string)
+		button2, _ := formData["button2"].(string)
+
+		form = &types.ModalForm{
+			ID:      int32(p.FormID),
+			Title:   title,
+			Content: content,
+			Button1: button1,
+			Button2: button2,
+		}
+
+	case "form":
+		// ActionForm: List of buttons
+		content, _ := formData["content"].(string)
+		buttonsData, _ := formData["buttons"].([]interface{})
+
+		buttons := make([]types.ActionButton, 0, len(buttonsData))
+		for _, btnData := range buttonsData {
+			btnMap, ok := btnData.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			btn := types.ActionButton{
+				Text: btnMap["text"].(string),
+			}
+
+			// Parse optional image
+			if imageData, ok := btnMap["image"].(map[string]interface{}); ok {
+				btn.Image = &types.ButtonImage{
+					Type: imageData["type"].(string),
+					Data: imageData["data"].(string),
+				}
+			}
+
+			buttons = append(buttons, btn)
+		}
+
+		form = &types.ActionForm{
+			ID:      int32(p.FormID),
+			Title:   title,
+			Content: content,
+			Buttons: buttons,
+		}
+
+	case "custom_form":
+		// CustomForm: Form with input elements
+		// contentData, _ := formData["content"].([]interface{})
+
+		// For now, store the raw content
+		// Full implementation would parse each element type
+		form = &types.CustomForm{
+			ID:      int32(p.FormID),
+			Title:   title,
+			Content: nil, // TODO: Parse form elements
+		}
+
+	default:
+		fmt.Printf("[WARN] Unknown form type: %s\n", formType)
+		return
+	}
+
+	c.emitter.Emit(events.EventForm, form)
 }

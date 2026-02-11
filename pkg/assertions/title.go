@@ -10,132 +10,137 @@ import (
 	"github.com/gollilla/best/pkg/types"
 )
 
-// TitleAssertion provides title/subtitle/actionbar-related assertions
+// TitleAssertion provides title-related assertions
 type TitleAssertion struct {
 	agent AgentInterface
 }
 
 // ToReceive waits for a title to be received within the timeout
 func (t *TitleAssertion) ToReceive(expected string, timeout time.Duration) {
-	t.toReceiveType("title", expected, timeout)
-}
-
-// ToReceiveTitle waits for a title to be received (alias for ToReceive)
-func (t *TitleAssertion) ToReceiveTitle(expected string, timeout time.Duration) {
-	t.ToReceive(expected, timeout)
-}
-
-// ToReceiveSubtitle waits for a subtitle to be received within the timeout
-func (t *TitleAssertion) ToReceiveSubtitle(expected string, timeout time.Duration) {
-	t.toReceiveType("subtitle", expected, timeout)
-}
-
-// ToReceiveActionbar waits for an actionbar message to be received within the timeout
-func (t *TitleAssertion) ToReceiveActionbar(expected string, timeout time.Duration) {
-	t.toReceiveType("actionbar", expected, timeout)
+	receiveDisplayType(t.agent, "title", expected, timeout)
 }
 
 // NotToReceive ensures no title is received within the timeout
 func (t *TitleAssertion) NotToReceive(unexpected string, timeout time.Duration) {
-	t.notToReceiveType("title", unexpected, timeout)
-}
-
-// NotToReceiveSubtitle ensures no subtitle is received within the timeout
-func (t *TitleAssertion) NotToReceiveSubtitle(unexpected string, timeout time.Duration) {
-	t.notToReceiveType("subtitle", unexpected, timeout)
-}
-
-// NotToReceiveActionbar ensures no actionbar message is received within the timeout
-func (t *TitleAssertion) NotToReceiveActionbar(unexpected string, timeout time.Duration) {
-	t.notToReceiveType("actionbar", unexpected, timeout)
+	notReceiveDisplayType(t.agent, "title", unexpected, timeout)
 }
 
 // ToContain waits for a title containing the specified text
 func (t *TitleAssertion) ToContain(text string, timeout time.Duration) {
-	t.toContainType("title", text, timeout)
+	containDisplayType(t.agent, "title", text, timeout)
 }
 
-// ToContainSubtitle waits for a subtitle containing the specified text
-func (t *TitleAssertion) ToContainSubtitle(text string, timeout time.Duration) {
-	t.toContainType("subtitle", text, timeout)
+// SubtitleAssertion provides subtitle-related assertions
+type SubtitleAssertion struct {
+	agent AgentInterface
 }
 
-// ToContainActionbar waits for an actionbar containing the specified text
-func (t *TitleAssertion) ToContainActionbar(text string, timeout time.Duration) {
-	t.toContainType("actionbar", text, timeout)
+// ToReceive waits for a subtitle to be received within the timeout
+func (s *SubtitleAssertion) ToReceive(expected string, timeout time.Duration) {
+	receiveDisplayType(s.agent, "subtitle", expected, timeout)
 }
 
-// toReceiveType is a helper for exact match assertions
-func (t *TitleAssertion) toReceiveType(titleType, expected string, timeout time.Duration) {
+// NotToReceive ensures no subtitle is received within the timeout
+func (s *SubtitleAssertion) NotToReceive(unexpected string, timeout time.Duration) {
+	notReceiveDisplayType(s.agent, "subtitle", unexpected, timeout)
+}
+
+// ToContain waits for a subtitle containing the specified text
+func (s *SubtitleAssertion) ToContain(text string, timeout time.Duration) {
+	containDisplayType(s.agent, "subtitle", text, timeout)
+}
+
+// ActionbarAssertion provides actionbar-related assertions
+type ActionbarAssertion struct {
+	agent AgentInterface
+}
+
+// ToReceive waits for an actionbar message to be received within the timeout
+func (a *ActionbarAssertion) ToReceive(expected string, timeout time.Duration) {
+	receiveDisplayType(a.agent, "actionbar", expected, timeout)
+}
+
+// NotToReceive ensures no actionbar message is received within the timeout
+func (a *ActionbarAssertion) NotToReceive(unexpected string, timeout time.Duration) {
+	notReceiveDisplayType(a.agent, "actionbar", unexpected, timeout)
+}
+
+// ToContain waits for an actionbar containing the specified text
+func (a *ActionbarAssertion) ToContain(text string, timeout time.Duration) {
+	containDisplayType(a.agent, "actionbar", text, timeout)
+}
+
+// receiveDisplayType is a helper for exact match assertions
+func receiveDisplayType(agent AgentInterface, displayType, expected string, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	data, err := t.agent.Emitter().WaitFor(ctx, events.EventTitle, func(d events.EventData) bool {
+	data, err := agent.Emitter().WaitFor(ctx, events.EventTitle, func(d events.EventData) bool {
 		titleDisplay, ok := d.(*types.TitleDisplay)
 		if !ok {
 			return false
 		}
-		return titleDisplay.Type == titleType && titleDisplay.Text == expected
+		return titleDisplay.Type == displayType && titleDisplay.Text == expected
 	})
 
 	if err != nil {
-		panic(fmt.Errorf("%s not received within %v: %w", titleType, timeout, err))
+		panic(fmt.Errorf("%s not received within %v: %w", displayType, timeout, err))
 	}
 
 	titleDisplay := data.(*types.TitleDisplay)
 	if titleDisplay.Text != expected {
 		panic(NewAssertionError(
-			fmt.Sprintf("expected %s to be %q", titleType, expected),
+			fmt.Sprintf("expected %s to be %q", displayType, expected),
 			expected,
 			titleDisplay.Text,
 		))
 	}
 }
 
-// notToReceiveType is a helper for ensuring messages are not received
-func (t *TitleAssertion) notToReceiveType(titleType, unexpected string, timeout time.Duration) {
+// notReceiveDisplayType is a helper for ensuring messages are not received
+func notReceiveDisplayType(agent AgentInterface, displayType, unexpected string, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	data, err := t.agent.Emitter().WaitFor(ctx, events.EventTitle, func(d events.EventData) bool {
+	data, err := agent.Emitter().WaitFor(ctx, events.EventTitle, func(d events.EventData) bool {
 		titleDisplay, ok := d.(*types.TitleDisplay)
 		if !ok {
 			return false
 		}
-		return titleDisplay.Type == titleType && titleDisplay.Text == unexpected
+		return titleDisplay.Type == displayType && titleDisplay.Text == unexpected
 	})
 
 	if err == nil && data != nil {
 		titleDisplay := data.(*types.TitleDisplay)
 		panic(NewAssertionError(
-			fmt.Sprintf("expected %s not to be %q", titleType, unexpected),
+			fmt.Sprintf("expected %s not to be %q", displayType, unexpected),
 			fmt.Sprintf("not %q", unexpected),
 			titleDisplay.Text,
 		))
 	}
 }
 
-// toContainType is a helper for partial match assertions
-func (t *TitleAssertion) toContainType(titleType, text string, timeout time.Duration) {
+// containDisplayType is a helper for partial match assertions
+func containDisplayType(agent AgentInterface, displayType, text string, timeout time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	data, err := t.agent.Emitter().WaitFor(ctx, events.EventTitle, func(d events.EventData) bool {
+	data, err := agent.Emitter().WaitFor(ctx, events.EventTitle, func(d events.EventData) bool {
 		titleDisplay, ok := d.(*types.TitleDisplay)
 		if !ok {
 			return false
 		}
-		return titleDisplay.Type == titleType && strings.Contains(titleDisplay.Text, text)
+		return titleDisplay.Type == displayType && strings.Contains(titleDisplay.Text, text)
 	})
 
 	if err != nil {
-		panic(fmt.Errorf("%s containing %q not received within %v: %w", titleType, text, timeout, err))
+		panic(fmt.Errorf("%s containing %q not received within %v: %w", displayType, text, timeout, err))
 	}
 
 	titleDisplay := data.(*types.TitleDisplay)
 	if !strings.Contains(titleDisplay.Text, text) {
 		panic(NewAssertionError(
-			fmt.Sprintf("expected %s to contain %q", titleType, text),
+			fmt.Sprintf("expected %s to contain %q", displayType, text),
 			fmt.Sprintf("contains %q", text),
 			titleDisplay.Text,
 		))

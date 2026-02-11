@@ -82,3 +82,8 @@ func (c *CommandAssertion) ToHaveStatusCode(code int32) *CommandAssertion {
 func (c *CommandAssertion) And() *CommandAssertion {
 	return c
 }
+
+// GetOutput returns the command output for inspection
+func (c *CommandAssertion) GetOutput() *types.CommandOutput {
+	return c.output
+}

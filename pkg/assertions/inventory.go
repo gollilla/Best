@@ -158,10 +158,18 @@ func (i *InventoryAssertion) WaitForInventoryChange(timeout time.Duration) {
 // Helper functions
 
 // matchesItemID checks if an item ID matches the expected pattern
-// Supports full IDs (minecraft:diamond) and partial matches (diamond)
+// Supports:
+// - Full IDs (minecraft:diamond, item:335)
+// - Partial matches (diamond matches minecraft:diamond)
+// - Network IDs (335 matches item:335)
 func matchesItemID(actualID, expectedID string) bool {
 	// Exact match
 	if actualID == expectedID {
+		return true
+	}
+
+	// Check if expectedID is a numeric ID (e.g., "335" matches "item:335")
+	if strings.HasPrefix(actualID, "item:") && strings.TrimPrefix(actualID, "item:") == expectedID {
 		return true
 	}
 

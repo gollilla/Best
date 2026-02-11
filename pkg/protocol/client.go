@@ -22,6 +22,7 @@ type Client struct {
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
 	state      *types.PlayerState
+	identifier string // Agent name or identifier for debugging
 
 	// Packet handlers
 	handlers map[uint32]PacketHandler
@@ -33,15 +34,16 @@ type Client struct {
 type PacketHandler func(pk packet.Packet)
 
 // NewClient creates a new protocol client
-func NewClient(emitter *events.Emitter, state *types.PlayerState) *Client {
+func NewClient(emitter *events.Emitter, state *types.PlayerState, identifier string) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Client{
-		emitter:  emitter,
-		ctx:      ctx,
-		cancel:   cancel,
-		state:    state,
-		handlers: make(map[uint32]PacketHandler),
+		emitter:    emitter,
+		ctx:        ctx,
+		cancel:     cancel,
+		state:      state,
+		identifier: identifier,
+		handlers:   make(map[uint32]PacketHandler),
 	}
 }
 
@@ -130,6 +132,14 @@ func (c *Client) WritePacket(pk packet.Packet) error {
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
+
+	// Log outgoing packets
+	fmt.Printf("[PACKET OUT][%s] ID: %d, Type: %T\n", c.identifier, pk.ID(), pk)
+	if textPk, ok := pk.(*packet.Text); ok {
+		fmt.Printf("  → Text: Type=%d, Message=%q, NeedsTranslation=%v, Parameters=%v\n",
+			textPk.TextType, textPk.Message, textPk.NeedsTranslation, textPk.Parameters)
+	}
+
 	return c.conn.WritePacket(pk)
 }
 
@@ -149,6 +159,20 @@ func (c *Client) readPackets() {
 				return
 			}
 
+			// Log incoming packets (filter noise)
+			packetName := fmt.Sprintf("%T", pk)
+			if !isNoisePacket(packetName) {
+				fmt.Printf("[PACKET IN ][%s] ID: %d, Type: %s\n", c.identifier, pk.ID(), packetName)
+				if textPk, ok := pk.(*packet.Text); ok {
+					fmt.Printf("  ← Text: Type=%d, Message=%q, NeedsTranslation=%v, Parameters=%v\n",
+						textPk.TextType, textPk.Message, textPk.NeedsTranslation, textPk.Parameters)
+				}
+				if invPk, ok := pk.(*packet.InventoryContent); ok {
+					fmt.Printf("  ← InventoryContent: WindowID=%d, Items=%d\n",
+						invPk.WindowID, len(invPk.Content))
+				}
+			}
+
 			// Handle the packet
 			c.handlePacket(pk)
 
@@ -159,6 +183,22 @@ func (c *Client) readPackets() {
 			})
 		}
 	}
+}
+
+// isNoisePacket filters out high-frequency packets to reduce log noise
+func isNoisePacket(packetName string) bool {
+	noisePackets := []string{
+		"*packet.NetworkChunkPublisherUpdate",
+		"*packet.LevelChunk",
+		"*packet.NetworkStackLatency",
+		"*packet.TickSync",
+	}
+	for _, noise := range noisePackets {
+		if packetName == noise {
+			return true
+		}
+	}
+	return false
 }
 
 // handlePacket routes packets to registered handlers
@@ -204,6 +244,7 @@ func (c *Client) registerHandlers() {
 	c.RegisterHandler(packet.IDSetScore, c.handleSetScore)
 	c.RegisterHandler(packet.IDSetDisplayObjective, c.handleSetDisplayObjective)
 	c.RegisterHandler(packet.IDRemoveObjective, c.handleRemoveObjective)
+	c.RegisterHandler(packet.IDModalFormRequest, c.handleModalFormRequest)
 }
 
 // GetConn returns the underlying minecraft.Conn

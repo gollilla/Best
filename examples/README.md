@@ -142,9 +142,36 @@ agent.Expect().Permission().ToBeAtLeast(0)
 #### タイトル/UI
 ```go
 agent.Expect().Title().ToReceive("Hello", 3*time.Second)
-agent.Expect().Title().ToReceiveSubtitle("Subtitle", 3*time.Second)
-agent.Expect().Title().ToReceiveActionbar("Action", 3*time.Second)
+agent.Expect().Subtitle().ToReceive("Subtitle", 3*time.Second)
+agent.Expect().Actionbar().ToReceive("Action", 3*time.Second)
 agent.Expect().Title().ToContain("keyword", 3*time.Second)
+```
+
+#### フォーム
+```go
+// フォームを受信
+agent.Expect().Form().ToReceive(3*time.Second)
+
+// 特定のタイトルのフォームを受信
+agent.Expect().Form().ToReceiveWithTitle("メニュー", 3*time.Second)
+
+// フォームタイプのアサート
+agent.Expect().Form().ToReceive(3*time.Second).ToBeModal()           // ModalForm (Yes/No)
+agent.Expect().Form().ToReceive(3*time.Second).ToBeActionForm()      // ActionForm (ボタンリスト)
+agent.Expect().Form().ToReceive(3*time.Second).ToBeCustomForm()      // CustomForm (入力要素)
+
+// フォームの内容をアサート
+agent.Expect().Form().ToReceive(3*time.Second).ToHaveTitle("メニュー")
+agent.Expect().Form().ToReceive(3*time.Second).ToContainTitle("設定")
+
+// ActionFormのボタンをアサート
+agent.Expect().Form().ToReceive(3*time.Second).ToHaveButton("開始")
+agent.Expect().Form().ToReceive(3*time.Second).ToHaveButtons(3)      // ボタン数
+
+// フォームへの回答を送信
+form := agent.GetLastForm()
+agent.SubmitForm(form.GetID(), true)  // ModalFormの場合: true/false
+agent.SubmitForm(form.GetID(), 0)     // ActionFormの場合: ボタンのインデックス
 ```
 
 #### スコアボード
@@ -171,6 +198,63 @@ defer func() {
     }
 }()
 agent.Expect().Title().ToReceive("絶対に送信されない", 50*time.Millisecond)
+```
+
+#### 汎用アサーション
+```go
+// パッケージレベルの汎用アサーション関数（エージェント不要）
+
+// 真偽値のアサート
+assertions.IsTrue(agent.IsConnected(), "プレイヤーが接続されているべき")
+assertions.IsFalse(agent.Health() <= 0, "プレイヤーが生存しているべき")
+
+// 等価性のアサート
+assertions.Equal(agent.Gamemode(), int32(1), "ゲームモードがクリエイティブであるべき")
+assertions.NotEqual(agent.Gamemode(), int32(2), "ゲームモードがアドベンチャーでないべき")
+
+// 数値比較のアサート
+assertions.GreaterThan(float64(agent.Health()), 0, "体力が正の値であるべき")
+assertions.InRange(float64(agent.Health()), 0, 20, "体力が0-20の範囲内であるべき")
+assertions.LessThanOrEqual(float64(agent.GetHunger()), 20, "満腹度が最大20以下であるべき")
+
+// 文字列のアサート
+assertions.NotEmpty(agent.Username(), "ユーザー名が空でないべき")
+assertions.Contains(agent.Username(), "Test", "ユーザー名に'Test'を含むべき")
+assertions.HasPrefix(agent.Username(), "Bot", "'Bot'で始まるべき")
+
+// コレクションのアサート
+inventory := agent.GetInventory()
+assertions.LengthEqual(inventory, 0, "インベントリが空であるべき")
+assertions.IsEmptyCollection(inventory, "インベントリが空であるべき")
+assertions.ContainsElement(tags, "admin", "adminタグを持つべき")
+
+// Nilチェック
+state := agent.State()
+assertions.NotNil(&state, "状態がnilでないべき")
+```
+
+**利用可能な汎用アサーション:**
+- `IsTrue(condition, message)` - 条件が真
+- `IsFalse(condition, message)` - 条件が偽
+- `Equal(actual, expected, message)` - 値が等しい
+- `NotEqual(actual, expected, message)` - 値が異なる
+- `IsNil(value, message)` - 値がnil
+- `NotNil(value, message)` - 値がnilでない
+- `GreaterThan(actual, threshold, message)` - 値が閾値より大きい
+- `GreaterThanOrEqual(actual, threshold, message)` - 値が閾値以上
+- `LessThan(actual, threshold, message)` - 値が閾値より小さい
+- `LessThanOrEqual(actual, threshold, message)` - 値が閾値以下
+- `InRange(actual, min, max, message)` - 値が範囲内
+- `Contains(str, substr, message)` - 文字列が部分文字列を含む
+- `NotContains(str, substr, message)` - 文字列が部分文字列を含まない
+- `HasPrefix(str, prefix, message)` - 文字列が接頭辞で始まる
+- `HasSuffix(str, suffix, message)` - 文字列が接尾辞で終わる
+- `IsEmpty(str, message)` - 文字列が空
+- `NotEmpty(str, message)` - 文字列が空でない
+- `LengthEqual(collection, expectedLen, message)` - コレクションの長さ
+- `IsEmptyCollection(collection, message)` - コレクションが空
+- `NotEmptyCollection(collection, message)` - コレクションが空でない
+- `ContainsElement(slice, element, message)` - スライスが要素を含む
 ```
 
 ## カスタマイズ

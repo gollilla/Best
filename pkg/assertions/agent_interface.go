@@ -29,6 +29,12 @@ type AgentInterface interface {
 	// Actions
 	Command(cmd string) (*types.CommandOutput, error)
 
+	// Form handling
+	GetPendingForm(id int32) (types.Form, bool)
+	GetLastForm() types.Form
+	SubmitForm(formID int32, response types.FormResponse) error
+	ClearPendingForms()
+
 	// Event system
 	Emitter() *events.Emitter
 }

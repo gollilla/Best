@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"runtime/debug"
 	"time"
+
+	"github.com/gollilla/best/pkg/assertions"
 )
 
 // TestRunner manages and executes test suites
@@ -417,7 +419,16 @@ func (r *TestRunner) executeTest(test *TestCase, suite *TestSuite, ctx *TestCont
 	go func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				testErr = fmt.Errorf("%v\nStack: %s", recovered, string(debug.Stack()))
+				// Check if it's an AssertionError (clean error message without stack)
+				if _, ok := recovered.(*assertions.AssertionError); ok {
+					testErr = fmt.Errorf("%v", recovered)
+				} else if err, ok := recovered.(error); ok {
+					// Regular error, include stack trace
+					testErr = fmt.Errorf("%v\nStack: %s", err, string(debug.Stack()))
+				} else {
+					// Unknown panic type, include stack trace
+					testErr = fmt.Errorf("%v\nStack: %s", recovered, string(debug.Stack()))
+				}
 			}
 			close(done)
 		}()

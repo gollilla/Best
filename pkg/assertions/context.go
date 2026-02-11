@@ -12,7 +12,7 @@ type AssertionContext struct {
 	positionAssertion  *PositionAssertion
 	chatAssertion      *ChatAssertion
 	inventoryAssertion *InventoryAssertion
-	// formAssertion     *FormAssertion // TODO: Implement form assertions
+	formAssertion      *FormAssertion
 
 	// Player state assertions
 	healthAssertion     *HealthAssertion
@@ -24,6 +24,8 @@ type AssertionContext struct {
 
 	// UI/Display assertions
 	titleAssertion      *TitleAssertion
+	subtitleAssertion   *SubtitleAssertion
+	actionbarAssertion  *ActionbarAssertion
 	scoreboardAssertion *ScoreboardAssertion
 }
 
@@ -37,7 +39,7 @@ func NewAssertionContext(a AgentInterface) *AssertionContext {
 	ctx.positionAssertion = &PositionAssertion{agent: a}
 	ctx.chatAssertion = &ChatAssertion{agent: a}
 	ctx.inventoryAssertion = &InventoryAssertion{agent: a}
-	// ctx.formAssertion = &FormAssertion{agent: a} // TODO: Implement form assertions
+	ctx.formAssertion = &FormAssertion{agent: a}
 
 	// Initialize player state assertions
 	ctx.healthAssertion = &HealthAssertion{agent: a}
@@ -49,6 +51,8 @@ func NewAssertionContext(a AgentInterface) *AssertionContext {
 
 	// Initialize UI/Display assertions
 	ctx.titleAssertion = &TitleAssertion{agent: a}
+	ctx.subtitleAssertion = &SubtitleAssertion{agent: a}
+	ctx.actionbarAssertion = &ActionbarAssertion{agent: a}
 	ctx.scoreboardAssertion = &ScoreboardAssertion{agent: a}
 
 	return ctx
@@ -131,9 +135,9 @@ func (c *AssertionContext) Command(cmdOrOutput interface{}) *CommandAssertion {
 }
 
 // Form returns form assertions
-// func (c *AssertionContext) Form() *FormAssertion {
-// 	return c.formAssertion
-// } // TODO: Implement form assertions
+func (c *AssertionContext) Form() *FormAssertion {
+	return c.formAssertion
+}
 
 // === Player state assertion getters ===
 
@@ -169,12 +173,32 @@ func (c *AssertionContext) Tag() *TagAssertion {
 
 // === UI/Display assertion getters ===
 
-// Title returns title/subtitle/actionbar assertions
+// Title returns title assertions
 func (c *AssertionContext) Title() *TitleAssertion {
 	return c.titleAssertion
+}
+
+// Subtitle returns subtitle assertions
+func (c *AssertionContext) Subtitle() *SubtitleAssertion {
+	return c.subtitleAssertion
+}
+
+// Actionbar returns actionbar assertions
+func (c *AssertionContext) Actionbar() *ActionbarAssertion {
+	return c.actionbarAssertion
 }
 
 // Scoreboard returns scoreboard assertions
 func (c *AssertionContext) Scoreboard() *ScoreboardAssertion {
 	return c.scoreboardAssertion
 }
+
+// === Generic assertions ===
+// Generic assertion methods are defined in generic.go
+// They can be called directly on AssertionContext:
+// - IsTrue, IsFalse
+// - Equal, NotEqual
+// - IsNil, NotNil
+// - GreaterThan, LessThan, InRange
+// - Contains, HasPrefix, HasSuffix
+// - LengthEqual, ContainsElement

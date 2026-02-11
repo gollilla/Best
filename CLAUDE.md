@@ -12,7 +12,7 @@
 ### 基本アサーション (実装済み)
 - 接続状態アサート (`toBeConnected`, `toBeDisconnected`)
 - コマンド実行アサート (`command().toSucceed`, `command().toFail`, `command().toContain`)
-- Form表示アサート (`form.toReceive`, Modal/Action/CustomForm対応)
+- Form表示アサート (`form().toReceive`, `form().toReceiveWithTitle`, `form().toBeModal`, `form().toBeActionForm`, `form().toBeCustomForm`, `form().toHaveTitle`, `form().toContainTitle`, `form().toHaveButton`, `form().toHaveButtons`, `form().toHaveContent`, Modal/Action/CustomForm対応)
 - 座標アサート (`position.toBe`, `position.toBeNear`, `position.toReach`)
 - チャット表示アサート (`chat.toReceive`, `chat.notToReceive`, `chat.toReceiveInOrder`)
 
@@ -44,3 +44,11 @@
 - タイムアウトアサート (`timing.toCompleteWithin`, `timing.toTimeout`)
 - シーケンスアサート (`sequence.toOccurInOrder`)
 - 条件待機アサート (`condition.toBeMetWithin`)
+
+### 汎用アサーション (実装済み)
+- 真偽値アサート (`isTrue`, `isFalse`)
+- 等価性アサート (`equal`, `notEqual`)
+- Nilアサート (`isNil`, `notNil`)
+- 数値比較アサート (`greaterThan`, `lessThan`, `greaterThanOrEqual`, `lessThanOrEqual`, `inRange`)
+- 文字列アサート (`contains`, `notContains`, `hasPrefix`, `hasSuffix`, `isEmpty`, `notEmpty`)
+- コレクションアサート (`lengthEqual`, `isEmptyCollection`, `notEmptyCollection`, `containsElement`)
