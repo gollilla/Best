@@ -2,6 +2,8 @@
 
 統合版マインクラフト（Minecraft Bedrock Edition）のサーバー用テストライブラリのGo実装です。
 
+[WIP]
+
 ## 特徴
 
 - **仮想プレイヤーエージェント**: Bedrockサーバーに接続する仮想プレイヤー
@@ -40,23 +42,6 @@ agent:
   commandTimeout: 5
 ```
 
-設定ファイルを使ってAgentを作成：
-
-```go
-// 設定ファイルを読み込み
-cfg, err := best.LoadConfig()
-if err != nil {
-    cfg = best.DefaultConfig()
-}
-
-// 設定からAgentを作成
-agent := best.NewAgentFromConfig(cfg)
-agent.Connect()
-```
-
-### 注意事項
-エージェントの利用にあたり、各サーバーソフトウェアの設定にてXbox認証を無効化する必要があります
-
 ### 基本的な接続
 
 ```go
@@ -72,11 +57,7 @@ import (
 
 func main() {
     // エージェント作成
-    agent := best.NewAgent(
-        best.WithHost("localhost"),
-        best.WithPort(19132),
-        best.WithUsername("TestBot"),
-    )
+    agent := best.createAgent("TestBot")
 
     // イベントリスナー登録
     agent.Emitter().On(best.EventChat, func(data best.EventData) {
