@@ -191,31 +191,6 @@ agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
 | `commandSendMethod` | string | `text` | コマンド送信方式（`text` or `request`） |
 | `commandTimeout` | int | `5` | コマンドレスポンス待機タイムアウト（秒） |
 
-## プロジェクト構造
-
-```
-best/
-├── cmd/best/              # CLIエントリーポイント
-├── pkg/
-│   ├── agent/             # Agentコア実装
-│   ├── events/            # イベントシステム
-│   ├── protocol/          # Gophertunnelラッパー
-│   ├── state/             # プレイヤー状態管理
-│   ├── assertions/        # アサーションフレームワーク
-│   ├── runner/            # テストランナー
-│   ├── scenario/          # シナリオランナー
-│   ├── llm/               # LLM統合
-│   ├── config/            # 設定管理
-│   ├── types/             # 共通型定義
-│   └── utils/             # ユーティリティ
-├── examples/              # 使用例
-│   ├── pnx/               # PowerNukkitX用テスト例
-│   ├── pmmp/              # PocketMine-MP用テスト例
-│   └── ...
-├── best.go                # メインパッケージ
-├── best.config.example.yml # 設定ファイルのテンプレート
-└── go.mod
-```
 
 ## 実装状況
 
