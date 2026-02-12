@@ -1,6 +1,8 @@
 package types
 
-import "time"
+import (
+	"time"
+)
 
 // Position represents a 3D position
 type Position struct {
@@ -26,7 +28,7 @@ type PlayerState struct {
 	IsOnGround      bool
 }
 
-// CommandOutput represents the result of a command execution
+// CommandOutput represents the result of a command execution (CommandOutputPacket)
 type CommandOutput struct {
 	Command    string
 	Success    bool
@@ -196,7 +198,6 @@ type ClientOptions struct {
 	Host     string
 	Port     uint16
 	Username string
-	Offline  bool
 	Timeout  time.Duration
 	Version  string
 }

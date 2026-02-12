@@ -1,0 +1,14 @@
+# Generated files
+*.log
+logs/
+players/
+plugins/
+worlds/
+banned-ips.txt
+banned-players.txt
+white-list.txt
+
+# Keep config files
+!server.properties
+!nukkit.yml
+!ops.txt

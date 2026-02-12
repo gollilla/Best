@@ -10,18 +10,24 @@ import (
 )
 
 // handleCommandOutput handles command execution results
-// Note: Most Bedrock servers send command output via Text packets instead
+// Note: Some Bedrock servers (like PNX) send command output via CommandOutput packet
+// while others (like PMMP) send via Text packets
 func (c *Client) handleCommandOutput(pk packet.Packet) {
 	p := pk.(*packet.CommandOutput)
 
 	// Build output string from messages
 	var outputLines []string
 	for _, msg := range p.OutputMessages {
-		// Combine message parameters
-		text := strings.Join(msg.Parameters, " ")
-		if text == "" && msg.Message != "" {
-			text = msg.Message
+		// Include both message key and parameters for full context
+		// Message may contain translation keys like "%commands.generic.unknown"
+		var parts []string
+		if msg.Message != "" {
+			parts = append(parts, msg.Message)
 		}
+		if len(msg.Parameters) > 0 {
+			parts = append(parts, msg.Parameters...)
+		}
+		text := strings.Join(parts, " ")
 		if text != "" {
 			outputLines = append(outputLines, text)
 		}

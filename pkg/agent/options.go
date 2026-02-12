@@ -31,13 +31,6 @@ func WithUsername(username string) AgentOption {
 	}
 }
 
-// WithOffline sets offline mode
-func WithOffline(offline bool) AgentOption {
-	return func(a *Agent) {
-		a.options.Offline = offline
-	}
-}
-
 // WithTimeout sets the connection timeout
 func WithTimeout(timeout time.Duration) AgentOption {
 	return func(a *Agent) {
@@ -59,13 +52,26 @@ func WithCommandPrefix(prefix string) AgentOption {
 	}
 }
 
+// WithCommandSendMethod sets the command send method ("text" or "request")
+func WithCommandSendMethod(method string) AgentOption {
+	return func(a *Agent) {
+		a.commandSendMethod = method
+	}
+}
+
+// WithCommandTimeout sets the command timeout for assertions
+func WithCommandTimeout(timeout time.Duration) AgentOption {
+	return func(a *Agent) {
+		a.commandTimeout = timeout
+	}
+}
+
 // DefaultOptions returns default client options
 func DefaultOptions() types.ClientOptions {
 	return types.ClientOptions{
 		Host:     "localhost",
 		Port:     19132,
 		Username: "TestBot",
-		Offline:  true,
 		Timeout:  30 * time.Second,
 		Version:  "1.21.130",
 	}

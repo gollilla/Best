@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"math"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/go-gl/mathgl/mgl32"
+	"github.com/google/uuid"
+	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 
 	"github.com/gollilla/best/pkg/events"
@@ -34,129 +34,60 @@ func (a *Agent) Chat(message string) error {
 	return a.client.WritePacket(pk)
 }
 
-// Command executes a command and returns the output
-// Note: Most Bedrock servers handle commands through chat rather than CommandRequest packets
-func (a *Agent) Command(cmd string) (*types.CommandOutput, error) {
-	if !a.isConnected.Load() {
-		return nil, fmt.Errorf("not connected")
-	}
-
+// Command sends a command to the server
+// Send method is determined by agent configuration (commandSendMethod)
+// Use Chat() or CommandOutput() assertions to wait for the response
+func (a *Agent) Command(cmd string) error {
 	// Ensure command has leading slash
 	if len(cmd) > 0 && cmd[0] != '/' {
 		cmd = "/" + cmd
 	}
 
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(a.ctx, a.options.Timeout)
-	defer cancel()
-
-	// Collect text messages that arrive after sending the command
-	textMessages := []string{}
-	var mu sync.Mutex
-	done := make(chan struct{})
-
-	// Listen for text packets (command responses)
-	handlerID := a.emitter.On(events.EventChat, func(data events.EventData) {
-		msg, ok := data.(*types.ChatMessage)
-		if !ok {
-			return
-		}
-
-		if msg.Type != "chat" { // Only collect system/raw messages, not player chat
-			mu.Lock()
-			textMessages = append(textMessages, msg.Message)
-			mu.Unlock()
-		}
-	})
-	defer a.emitter.Off(events.EventChat, handlerID)
-
-	// Send command as a chat message (this is how most Bedrock servers handle commands)
-	if err := a.Chat(cmd); err != nil {
-		return nil, err
+	// Send command based on configured method
+	if a.commandSendMethod == "request" {
+		return a.sendCommandViaRequest(cmd)
 	}
-
-	// Wait a short time to collect all response messages
-	// Most command responses arrive within 1 second
-	go func() {
-		time.Sleep(1000 * time.Millisecond)
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		// Collection period ended, return what we got
-		mu.Lock()
-		msgs := textMessages
-		mu.Unlock()
-
-		if len(msgs) > 0 {
-			output := strings.Join(msgs, "\n")
-			// Check if the output contains error indicators
-			success := !isCommandError(output)
-
-			return &types.CommandOutput{
-				Command:    cmd,
-				Success:    success,
-				Output:     output,
-				StatusCode: boolToStatusCode(success),
-			}, nil
-		}
-
-		// No messages received - command might have failed silently
-		return &types.CommandOutput{
-			Command:    cmd,
-			Success:    false,
-			Output:     "",
-			StatusCode: 1,
-		}, nil
-	case <-ctx.Done():
-		return nil, fmt.Errorf("command timeout: %s", cmd)
-	}
+	return a.sendCommandViaText(cmd)
 }
 
-// isCommandError checks if the command output contains error indicators
-func isCommandError(output string) bool {
-	lowerOutput := strings.ToLower(output)
-
-	// Common Minecraft Bedrock error patterns
-	errorPatterns := []string{
-		"unknown command",
-		"incorrect argument",
-		"syntax error",
-		"no targets matched",
-		"permission denied",
-		"not enough permissions",
-		"you do not have permission",
-		"unable to",
-		"cannot",
-		"failed to",
-		"error:",
-		"invalid",
-		"usage:",
+// sendCommandViaText sends a command as a chat message (Text packet)
+func (a *Agent) sendCommandViaText(cmd string) error {
+	if !a.isConnected.Load() {
+		return fmt.Errorf("not connected")
 	}
-
-	for _, pattern := range errorPatterns {
-		if strings.Contains(lowerOutput, pattern) {
-			return true
-		}
-	}
-
-	return false
+	return a.Chat(cmd)
 }
 
-// boolToStatusCode converts a boolean success value to a status code
-func boolToStatusCode(success bool) int32 {
-	if success {
-		return 0
+// sendCommandViaRequest sends a command via CommandRequest packet
+func (a *Agent) sendCommandViaRequest(cmd string) error {
+	if !a.isConnected.Load() {
+		return fmt.Errorf("not connected")
 	}
-	return 1
+
+	// Remove leading slash for CommandRequest
+	cmdLine := cmd
+	if strings.HasPrefix(cmdLine, "/") {
+		cmdLine = cmdLine[1:]
+	}
+
+	pk := &packet.CommandRequest{
+		CommandLine: cmdLine,
+		CommandOrigin: protocol.CommandOrigin{
+			Origin:         protocol.CommandOriginPlayer,
+			UUID:           uuid.New(),
+			RequestID:      "",
+			PlayerUniqueID: a.state.RuntimeEntityID,
+		},
+		Internal: false,
+	}
+
+	return a.client.WritePacket(pk)
 }
 
 // Goto teleports the player to the specified position
 func (a *Agent) Goto(pos types.Position) error {
 	cmd := fmt.Sprintf("/tp @s %.2f %.2f %.2f", pos.X, pos.Y, pos.Z)
-	_, err := a.Command(cmd)
-	return err
+	return a.Command(cmd)
 }
 
 // LookAt makes the player look at a specific position
@@ -218,4 +149,3 @@ func (a *Agent) WaitForChat(ctx context.Context, filter func(*types.ChatMessage)
 
 	return data.(*types.ChatMessage), nil
 }
-

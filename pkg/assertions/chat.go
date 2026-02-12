@@ -17,7 +17,53 @@ type ChatAssertion struct {
 }
 
 // ToReceive waits for a chat message matching the expected pattern
-func (c *ChatAssertion) ToReceive(ctx context.Context, expected interface{}, options *ChatOptions) *types.ChatMessage {
+// Usage: agent.Expect().Chat().ToReceive("Hello", 3*time.Second, nil)
+func (c *ChatAssertion) ToReceive(expected interface{}, timeout time.Duration, options *ChatOptions) *types.ChatMessage {
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	if options == nil {
+		options = &ChatOptions{}
+	}
+
+	// Create filter
+	filter := func(data events.EventData) bool {
+		msg, ok := data.(*types.ChatMessage)
+		if !ok {
+			return false
+		}
+
+		// Check sender filter
+		if options.From != "" && msg.Sender != options.From {
+			return false
+		}
+
+		// Check message content
+		return matchesPattern(msg.Message, expected)
+	}
+
+	// Wait for matching message
+	data, err := c.agent.Emitter().WaitFor(ctx, events.EventChat, filter)
+	if err != nil {
+		fromStr := ""
+		if options.From != "" {
+			fromStr = fmt.Sprintf(" from %s", options.From)
+		}
+		panic(NewAssertionError(
+			fmt.Sprintf("Timeout waiting for chat message matching %v%s", expected, fromStr),
+			expected,
+			nil,
+		))
+	}
+
+	msg := data.(*types.ChatMessage)
+	return msg
+}
+
+// ToReceiveWithContext waits for a chat message with a custom context
+// Use this when you need fine-grained control over the context
+func (c *ChatAssertion) ToReceiveWithContext(ctx context.Context, expected interface{}, options *ChatOptions) *types.ChatMessage {
 	// Default timeout
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc

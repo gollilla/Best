@@ -1,6 +1,8 @@
 package protocol
 
 import (
+	"strings"
+
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 
 	"github.com/gollilla/best/pkg/events"
@@ -14,16 +16,11 @@ func (c *Client) handleText(pk packet.Packet) {
 	message := p.Message
 	sender := p.SourceName
 
-	// For translation packets (like chat echoes from server),
-	// the actual message is in Parameters
-	if p.TextType == packet.TextTypeTranslation {
-		// Parameters format: [sender, message]
-		if len(p.Parameters) >= 2 {
-			sender = p.Parameters[0]
-			message = p.Parameters[1]
-		} else if len(p.Parameters) == 1 {
-			message = p.Parameters[0]
-		}
+	// For translation packets, include parameters in the message
+	// This makes it easier to search for content in command output
+	if p.TextType == packet.TextTypeTranslation && len(p.Parameters) > 0 {
+		// Append all parameters to make content searchable
+		message = message + " " + strings.Join(p.Parameters, " ")
 	}
 
 	msg := &types.ChatMessage{

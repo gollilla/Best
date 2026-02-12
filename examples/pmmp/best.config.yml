@@ -1,0 +1,10 @@
+# Best Testing Framework Configuration for PowerNukkitX
+
+server:
+  host: localhost
+  port: 19132
+
+agent:
+  username: TestBot
+  timeout: 30
+  commandPrefix: "/"

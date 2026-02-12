@@ -23,10 +23,11 @@ type ServerConfig struct {
 
 // AgentConfig contains agent settings
 type AgentConfig struct {
-	Username      string `yaml:"username"`
-	Offline       bool   `yaml:"offline,omitempty"`
-	Timeout       int    `yaml:"timeout,omitempty"` // in seconds
-	CommandPrefix string `yaml:"commandPrefix,omitempty"`
+	Username          string `yaml:"username"`
+	Timeout           int    `yaml:"timeout,omitempty"`           // in seconds
+	CommandPrefix     string `yaml:"commandPrefix,omitempty"`
+	CommandSendMethod string `yaml:"commandSendMethod,omitempty"` // "text" or "request"
+	CommandTimeout    int    `yaml:"commandTimeout,omitempty"`    // assertion wait timeout in seconds
 }
 
 // DefaultConfig returns a default configuration
@@ -38,10 +39,11 @@ func DefaultConfig() *Config {
 			Version: "",
 		},
 		Agent: AgentConfig{
-			Username:      "TestBot",
-			Offline:       false,
-			Timeout:       30,
-			CommandPrefix: "/",
+			Username:          "TestBot",
+			Timeout:           30,
+			CommandPrefix:     "/",
+			CommandSendMethod: "text",
+			CommandTimeout:    5,
 		},
 	}
 }

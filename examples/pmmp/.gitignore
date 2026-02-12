@@ -1,0 +1,16 @@
+# Generated files
+*.log
+log_archive/
+players/
+plugin_data/
+resource_packs/
+worlds/
+banned-ips.txt
+banned-players.txt
+white-list.txt
+plugin_list.yml
+pocketmine.yml
+
+# Keep config files
+!server.properties
+!ops.txt

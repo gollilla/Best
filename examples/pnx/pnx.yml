@@ -1,0 +1,30 @@
+# PowerNukkitX 2.0 configuration
+
+settings:
+  ip: 0.0.0.0
+  port: 19132
+  maxPlayers: 20
+  defaultLevelName: world
+  allowList: false
+  motd: Best Test Server (PNX)
+  sub-motd: powernukkitx.org
+  language: eng
+  forceServerTranslate: false
+  safeSpawn: true
+  waterdogpe: false
+  autoSave: true
+  autosaveDelay: 6000
+  saveUnknownBlock: true
+  # Disable Xbox authentication for testing
+  xboxAuth: false
+
+player-settings:
+  savePlayerData: true
+  skinChangeCooldown: 30
+  forceSkinTrusted: false
+  checkMovement: true
+  spawnRadius: 16
+
+gameplay-settings:
+  enableCommandBlocks: true
+  allowBeta: false

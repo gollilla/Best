@@ -20,12 +20,7 @@ var (
 	globalConfigOnce sync.Once
 )
 
-// init automatically loads the configuration file on package initialization
-func init() {
-	loadGlobalConfig()
-}
-
-// loadGlobalConfig loads the configuration file once
+// loadGlobalConfig loads the configuration file once (lazy loading)
 func loadGlobalConfig() {
 	globalConfigOnce.Do(func() {
 		var err error
@@ -77,11 +72,6 @@ func CreateAgent(username string, options ...AgentOption) *Agent {
 		agentOptions = append(agentOptions, WithVersion(cfg.Server.Version))
 	}
 
-	// Add offline mode if specified in config
-	if cfg.Agent.Offline {
-		agentOptions = append(agentOptions, WithOffline(true))
-	}
-
 	// Add timeout if specified in config
 	if cfg.Agent.Timeout > 0 {
 		agentOptions = append(agentOptions, WithTimeout(time.Duration(cfg.Agent.Timeout)*time.Second))
@@ -90,6 +80,11 @@ func CreateAgent(username string, options ...AgentOption) *Agent {
 	// Add command prefix if specified in config
 	if cfg.Agent.CommandPrefix != "" {
 		agentOptions = append(agentOptions, WithCommandPrefix(cfg.Agent.CommandPrefix))
+	}
+
+	// Add command send method if specified in config
+	if cfg.Agent.CommandSendMethod != "" {
+		agentOptions = append(agentOptions, WithCommandSendMethod(cfg.Agent.CommandSendMethod))
 	}
 
 	// Append user-provided options (these will override config file settings)
@@ -105,14 +100,14 @@ type Agent = agent.Agent
 type AgentOption = agent.AgentOption
 
 var (
-	NewAgent          = agent.NewAgent
-	WithHost          = agent.WithHost
-	WithPort          = agent.WithPort
-	WithUsername      = agent.WithUsername
-	WithOffline       = agent.WithOffline
-	WithTimeout       = agent.WithTimeout
-	WithVersion       = agent.WithVersion
-	WithCommandPrefix = agent.WithCommandPrefix
+	NewAgent              = agent.NewAgent
+	WithHost              = agent.WithHost
+	WithPort              = agent.WithPort
+	WithUsername          = agent.WithUsername
+	WithTimeout           = agent.WithTimeout
+	WithVersion           = agent.WithVersion
+	WithCommandPrefix     = agent.WithCommandPrefix
+	WithCommandSendMethod = agent.WithCommandSendMethod
 )
 
 // Event types
@@ -178,9 +173,10 @@ type AssertionContext = assertions.AssertionContext
 type AssertionError = assertions.AssertionError
 type PositionAssertion = assertions.PositionAssertion
 type ChatAssertion = assertions.ChatAssertion
-type CommandAssertion = assertions.CommandAssertion
+type CommandOutputAssertion = assertions.CommandOutputAssertion
 type InventoryAssertion = assertions.InventoryAssertion
 type ChatOptions = assertions.ChatOptions
+type CommandOutputOptions = assertions.CommandOutputOptions
 
 // Player state assertion types
 type HealthAssertion = assertions.HealthAssertion
@@ -241,10 +237,6 @@ func NewAgentFromConfig(cfg *Config) *Agent {
 
 	if cfg.Server.Version != "" {
 		options = append(options, WithVersion(cfg.Server.Version))
-	}
-
-	if cfg.Agent.Offline {
-		options = append(options, WithOffline(true))
 	}
 
 	if cfg.Agent.Timeout > 0 {

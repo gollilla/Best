@@ -1,0 +1,59 @@
+# PowerNukkitX configuration
+
+settings:
+  language: "eng"
+  force-language: false
+  shutdown-message: "Server closed"
+  query-plugins: true
+  deprecated-verbose: true
+  async-workers: auto
+
+network:
+  batch-threshold: 256
+  compression-level: 7
+  async-compression: true
+
+debug:
+  level: 1
+  commands: false
+
+player:
+  save-player-data: true
+  skin-change-cooldown: 30
+
+level-settings:
+  default-format: leveldb
+  auto-tick-rate: true
+  auto-tick-rate-limit: 20
+  base-tick-rate: 1
+  always-tick-players: false
+
+chunk-sending:
+  per-tick: 4
+  max-chunk-radius: 10
+  spawn-threshold: 56
+  cache-chunks: false
+
+chunk-ticking:
+  per-tick: 40
+  tick-radius: 3
+  light-updates: false
+  clear-tick-list: true
+
+chunk-generation:
+  queue-size: 8
+  population-queue-size: 8
+
+spawn-limits:
+  monsters: 70
+  animals: 15
+  water-animals: 5
+  ambient: 15
+
+ticks-per:
+  animal-spawns: 400
+  monster-spawns: 1
+  autosave: 6000
+  cache-cleanup: 900
+
+aliases:

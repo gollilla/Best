@@ -10,7 +10,7 @@
 - **包括的アサーションフレームワーク**: 15+のアサーションカテゴリ
 - **イベント駆動アーキテクチャ**: チャネルベースの非同期イベント処理
 - **テストランナー**: describe/test/itスタイルのテストフレームワーク
-- **シナリオランナー**: MarkdownベースのシナリオとLLM統合
+- **複数サーバー対応**: PowerNukkitX、PocketMine-MP、BDS等に対応
 - **Gophertunnel**: 最新のBedrock Editionプロトコルサポート
 
 ## インストール
@@ -32,9 +32,14 @@ server:
 
 agent:
   username: TestBot
-  offline: false
   timeout: 30
   commandPrefix: "/"
+  # コマンド送信方式: "text" (デフォルト) または "request"
+  # PNX: "request" を推奨
+  # PMMP/BDS: "text" を推奨
+  commandSendMethod: text
+  # コマンドレスポンス待機タイムアウト（秒）
+  commandTimeout: 5
 ```
 
 ### 基本的な接続
@@ -75,30 +80,37 @@ func main() {
     // チャット送信
     agent.Chat("Hello, world!")
 
-    // コマンド実行
-    output, _ := agent.Command("/help")
-    fmt.Println(output.Output)
+    // コマンド実行（レスポンスはアサーションで待機）
+    agent.Command("/help")
+    agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
 }
 ```
 
-### イベント処理
+### コマンド実行
+
+コマンドの実行とレスポンスの待機は分離されています：
 
 ```go
-// チャットメッセージを待機
-ctx := context.WithTimeout(context.Background(), 5*time.Second)
-msg, err := agent.WaitForChat(ctx, func(m *best.ChatMessage) bool {
-    return strings.Contains(m.Message, "hello")
-})
+// コマンド送信
+agent.Command("/say hello")
+
+// レスポンスを待機（サーバーによって異なる）
+// PNX: CommandOutputパケットで応答
+agent.Expect().CommandOutput().ToContain("hello", 3*time.Second)
+
+// PMMP/BDS: Chatパケットで応答
+agent.Expect().Chat().ToReceive("hello", 3*time.Second, nil)
 ```
 
 ### テストランナー
 
-Jest/Mocha風のテストフレームワークを提供します。最もシンプルな使い方：
+Jest/Mocha風のテストフレームワークを提供します：
 
 ```go
 package main
 
 import (
+    "time"
     "github.com/gollilla/best"
 )
 
@@ -128,6 +140,12 @@ func main() {
                 agent.Command("/title @s title Hello")
             }()
             agent.Expect().Title().ToReceive("Hello", 3*time.Second)
+        })
+
+        best.It("should execute command", func(ctx *best.TestContext) {
+            agent.Command("/help")
+            // PNXの場合
+            agent.Expect().CommandOutput().ToReceiveAny(3*time.Second)
         })
     })
 
@@ -166,16 +184,64 @@ best.BeforeAll(func(ctx *best.TestContext) {
 ```
 
 **特徴**:
-- 🚀 最小限のコード - 名前だけ指定すれば動く
-- 📝 設定ファイルで接続情報を一元管理
-- 🔧 必要に応じてオプションで上書き可能
-- 👥 複数Agentの同時使用に対応
-- 🎯 Jest/Mocha風のdescribe/test/it構文
+- 最小限のコード - 名前だけ指定すれば動く
+- 設定ファイルで接続情報を一元管理
+- 必要に応じてオプションで上書き可能
+- 複数Agentの同時使用に対応
+- Jest/Mocha風のdescribe/test/it構文
+
+## サーバー別設定
+
+### PowerNukkitX (PNX)
+
+```yaml
+agent:
+  commandSendMethod: request  # CommandRequestパケットを使用
+```
+
+```go
+// PNXはCommandOutputパケットでレスポンスを返す
+agent.Command("/help")
+agent.Expect().CommandOutput().ToContain("help", 3*time.Second)
+```
+
+### PocketMine-MP / BDS
+
+```yaml
+agent:
+  commandSendMethod: text  # Textパケットを使用（デフォルト）
+```
+
+```go
+// PMMMはTextパケット（チャット）でレスポンスを返す
+agent.Command("/help")
+agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
+```
+
+## 設定項目一覧
+
+### server
+
+| 項目 | 型 | デフォルト | 説明 |
+|------|-----|-----------|------|
+| `host` | string | `localhost` | サーバーホスト |
+| `port` | int | `19132` | ポート番号 |
+| `version` | string | - | Minecraftバージョン（省略可） |
+
+### agent
+
+| 項目 | 型 | デフォルト | 説明 |
+|------|-----|-----------|------|
+| `username` | string | `TestBot` | ユーザー名 |
+| `timeout` | int | `30` | 接続タイムアウト（秒） |
+| `commandPrefix` | string | `/` | コマンドプレフィックス |
+| `commandSendMethod` | string | `text` | コマンド送信方式（`text` or `request`） |
+| `commandTimeout` | int | `5` | コマンドレスポンス待機タイムアウト（秒） |
 
 ## プロジェクト構造
 
 ```
-best-go/
+best/
 ├── cmd/best/              # CLIエントリーポイント
 ├── pkg/
 │   ├── agent/             # Agentコア実装
@@ -186,12 +252,12 @@ best-go/
 │   ├── runner/            # テストランナー
 │   ├── scenario/          # シナリオランナー
 │   ├── llm/               # LLM統合
-│   ├── config/            # 設定管理 ✅
+│   ├── config/            # 設定管理
 │   ├── types/             # 共通型定義
 │   └── utils/             # ユーティリティ
 ├── examples/              # 使用例
-│   ├── test_runner/       # テストランナーの例
-│   ├── title_assertions/  # タイトルアサーションの例
+│   ├── pnx/               # PowerNukkitX用テスト例
+│   ├── pmmp/              # PocketMine-MP用テスト例
 │   └── ...
 ├── best.go                # メインパッケージ
 ├── best.config.example.yml # 設定ファイルのテンプレート
@@ -200,29 +266,25 @@ best-go/
 
 ## 実装状況
 
-### Phase 1: 基盤 ✅
-- [x] Go moduleセットアップ
+### Phase 1: 基盤- [x] Go moduleセットアップ
 - [x] イベントシステム (pkg/events/)
 - [x] プロトコル層 (pkg/protocol/)
 - [x] プレイヤー状態 (pkg/state/)
 - [x] 基本Agent (pkg/agent/)
 
-### Phase 2: コアアクション ✅
-- [x] Agentアクション (Chat, Command, Goto等)
+### Phase 2: コアアクション- [x] Agentアクション (Chat, Command, Goto等)
 - [x] ワールド管理 (pkg/world/)
 - [x] 追加パケットハンドラー (40+パケット対応)
 - [x] タスクランナー
 
-### Phase 3: アサーション ✅
-- [x] AssertionContext
-- [x] 基本アサーション (Position, Chat, Command)
+### Phase 3: アサーション- [x] AssertionContext
+- [x] 基本アサーション (Position, Chat, Command, CommandOutput)
 - [x] インベントリアサーション
 - [x] プレイヤー状態アサーション (Health, Hunger, Effect, Gamemode, Permission, Tag)
-- [x] UI/表示アサーション (Title, Subtitle, Actionbar, Scoreboard)
+- [x] UI/表示アサーション (Title, Subtitle, Actionbar, Scoreboard(TODO))
 - [x] ブロック/エンティティアサーション
 
-### Phase 4: テストランナー ✅
-- [x] TestRunner (describe/test/it)
+### Phase 4: テストランナー- [x] TestRunner (describe/test/it)
 - [x] フック (BeforeAll, AfterAll, BeforeEach, AfterEach)
 - [x] Skip/Only機能
 - [x] Reporter (ConsoleReporter)
@@ -231,6 +293,7 @@ best-go/
 - [x] タイムアウト処理
 - [x] 設定ファイルサポート (best.config.yml)
 - [x] 柔軟なAgent管理（複数Agent対応）
+- [x] 複数サーバー種類対応 (PNX, PMMP, BDS)
 
 ### Phase 5-7（予定）
 - [ ] シナリオランナー
@@ -242,7 +305,7 @@ best-go/
 ### 基本アサーション
 - **Position**: `toBe`, `toBeNear`, `toReach`
 - **Chat**: `toReceive`, `notToReceive`, `toReceiveInOrder`, `toContain`
-- **Command**: `toSucceed`, `toFail`, `toContain`
+- **CommandOutput**: `toReceive`, `toReceiveAny`, `toContain`, `toMatch`, `toReceiveWithStatusCode`
 
 ### プレイヤー状態アサーション
 - **Health**: `toBe`, `toBeAbove`, `toBeBelow`, `toBeFull`
@@ -258,26 +321,25 @@ best-go/
 ### UI/表示アサーション
 - **Title**: `toReceive`, `toReceiveSubtitle`, `toReceiveActionbar`, `toContain`
 - **Scoreboard**: `toHaveObjective`, `toHaveScore`, `toHaveScoreAbove`
+- **Form**: `toReceive`, `toReceiveWithTitle`, `toBeModal`, `toBeActionForm`, `toBeCustomForm`
 
 詳細は [pkg/assertions/](pkg/assertions/) を参照してください。
 
 ## 例の実行
 
 ```bash
-# 基本例
-cd examples/basic
+# PowerNukkitX用テスト
+cd examples/pnx
 go run main.go
 
-# テストランナー例
-cd examples/test_runner
-go run main.go
-
-# タイトルアサーション例
-cd examples/title_assertions
+# PocketMine-MP用テスト
+cd examples/pmmp
 go run main.go
 ```
 
-**注意**: Minecraftサーバーが `localhost:19132` で実行されている必要があります。
+**注意**:
+- 各exampleディレクトリに移動してから実行してください（設定ファイルを読み込むため）
+- Minecraftサーバーが `localhost:19132` で実行されている必要があります
 
 ## ライセンス
 
@@ -286,4 +348,3 @@ MIT License
 ## 参考
 
 - [Gophertunnel](https://github.com/sandertv/gophertunnel) - Bedrock Editionプロトコル実装
-- [Best (TypeScript版)](https://github.com/gollilla/best) - 元のTypeScript実装

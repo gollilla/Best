@@ -3,6 +3,7 @@ package protocol
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -22,6 +23,7 @@ type Client struct {
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
 	state      *types.PlayerState
+	identifier string // Agent name or identifier for debugging
 
 	// Packet handlers
 	handlers map[uint32]PacketHandler
@@ -33,15 +35,16 @@ type Client struct {
 type PacketHandler func(pk packet.Packet)
 
 // NewClient creates a new protocol client
-func NewClient(emitter *events.Emitter, state *types.PlayerState) *Client {
+func NewClient(emitter *events.Emitter, state *types.PlayerState, identifier string) *Client {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Client{
-		emitter:  emitter,
-		ctx:      ctx,
-		cancel:   cancel,
-		state:    state,
-		handlers: make(map[uint32]PacketHandler),
+		emitter:    emitter,
+		ctx:        ctx,
+		cancel:     cancel,
+		state:      state,
+		identifier: identifier,
+		handlers:   make(map[uint32]PacketHandler),
 	}
 }
 
@@ -49,16 +52,22 @@ func NewClient(emitter *events.Emitter, state *types.PlayerState) *Client {
 func (c *Client) Connect(opts types.ClientOptions) error {
 	// Create dialer with minimal configuration
 	// TokenSource is nil for offline/unauthenticated connections
-	// Gophertunnel will use defaults for ClientData and IdentityData if not specified
+	// KeepXBLIdentityData allows XUID to be sent even in offline mode (required for PNX)
 	dialer := minecraft.Dialer{
-		TokenSource: nil, // No authentication (offline mode)
+		TokenSource:         nil,  // No authentication (offline mode)
+		KeepXBLIdentityData: true, // Keep XUID for unique player UUIDs on PNX
 	}
 
-	// Set username in IdentityData with UUID (required format)
+	// Set username in IdentityData with UUID and XUID
 	if opts.Username != "" {
+		// Generate unique XUID for each player to avoid UUID collision in PNX
+		// PNX generates UUID from XUID: UUID.nameUUIDFromBytes(("pocket-auth-1-xuid:" + xuid).getBytes())
+		// Use full UUID string (without hyphens) for guaranteed uniqueness
+		xuid := strings.ReplaceAll(uuid.New().String(), "-", "")
 		dialer.IdentityData = login.IdentityData{
 			DisplayName: opts.Username,
-			Identity:    uuid.New().String(), // Must be UUID format
+			Identity:    uuid.New().String(),
+			XUID:        xuid,
 		}
 	}
 
@@ -204,6 +213,7 @@ func (c *Client) registerHandlers() {
 	c.RegisterHandler(packet.IDSetScore, c.handleSetScore)
 	c.RegisterHandler(packet.IDSetDisplayObjective, c.handleSetDisplayObjective)
 	c.RegisterHandler(packet.IDRemoveObjective, c.handleRemoveObjective)
+	c.RegisterHandler(packet.IDModalFormRequest, c.handleModalFormRequest)
 }
 
 // GetConn returns the underlying minecraft.Conn
