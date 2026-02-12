@@ -3,6 +3,7 @@ package protocol
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -51,16 +52,22 @@ func NewClient(emitter *events.Emitter, state *types.PlayerState, identifier str
 func (c *Client) Connect(opts types.ClientOptions) error {
 	// Create dialer with minimal configuration
 	// TokenSource is nil for offline/unauthenticated connections
-	// Gophertunnel will use defaults for ClientData and IdentityData if not specified
+	// KeepXBLIdentityData allows XUID to be sent even in offline mode (required for PNX)
 	dialer := minecraft.Dialer{
-		TokenSource: nil, // No authentication (offline mode)
+		TokenSource:         nil,  // No authentication (offline mode)
+		KeepXBLIdentityData: true, // Keep XUID for unique player UUIDs on PNX
 	}
 
-	// Set username in IdentityData with UUID (required format)
+	// Set username in IdentityData with UUID and XUID
 	if opts.Username != "" {
+		// Generate unique XUID for each player to avoid UUID collision in PNX
+		// PNX generates UUID from XUID: UUID.nameUUIDFromBytes(("pocket-auth-1-xuid:" + xuid).getBytes())
+		// Use full UUID string (without hyphens) for guaranteed uniqueness
+		xuid := strings.ReplaceAll(uuid.New().String(), "-", "")
 		dialer.IdentityData = login.IdentityData{
 			DisplayName: opts.Username,
-			Identity:    uuid.New().String(), // Must be UUID format
+			Identity:    uuid.New().String(),
+			XUID:        xuid,
 		}
 	}
 
@@ -132,14 +139,6 @@ func (c *Client) WritePacket(pk packet.Packet) error {
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
-
-	// Log outgoing packets
-	fmt.Printf("[PACKET OUT][%s] ID: %d, Type: %T\n", c.identifier, pk.ID(), pk)
-	if textPk, ok := pk.(*packet.Text); ok {
-		fmt.Printf("  → Text: Type=%d, Message=%q, NeedsTranslation=%v, Parameters=%v\n",
-			textPk.TextType, textPk.Message, textPk.NeedsTranslation, textPk.Parameters)
-	}
-
 	return c.conn.WritePacket(pk)
 }
 
@@ -159,20 +158,6 @@ func (c *Client) readPackets() {
 				return
 			}
 
-			// Log incoming packets (filter noise)
-			packetName := fmt.Sprintf("%T", pk)
-			if !isNoisePacket(packetName) {
-				fmt.Printf("[PACKET IN ][%s] ID: %d, Type: %s\n", c.identifier, pk.ID(), packetName)
-				if textPk, ok := pk.(*packet.Text); ok {
-					fmt.Printf("  ← Text: Type=%d, Message=%q, NeedsTranslation=%v, Parameters=%v\n",
-						textPk.TextType, textPk.Message, textPk.NeedsTranslation, textPk.Parameters)
-				}
-				if invPk, ok := pk.(*packet.InventoryContent); ok {
-					fmt.Printf("  ← InventoryContent: WindowID=%d, Items=%d\n",
-						invPk.WindowID, len(invPk.Content))
-				}
-			}
-
 			// Handle the packet
 			c.handlePacket(pk)
 
@@ -183,22 +168,6 @@ func (c *Client) readPackets() {
 			})
 		}
 	}
-}
-
-// isNoisePacket filters out high-frequency packets to reduce log noise
-func isNoisePacket(packetName string) bool {
-	noisePackets := []string{
-		"*packet.NetworkChunkPublisherUpdate",
-		"*packet.LevelChunk",
-		"*packet.NetworkStackLatency",
-		"*packet.TickSync",
-	}
-	for _, noise := range noisePackets {
-		if packetName == noise {
-			return true
-		}
-	}
-	return false
 }
 
 // handlePacket routes packets to registered handlers

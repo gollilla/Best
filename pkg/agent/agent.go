@@ -29,7 +29,9 @@ type Agent struct {
 	emitter     *bestevents.Emitter
 
 	// Agent features
-	commandPrefix string
+	commandPrefix     string
+	commandSendMethod string        // "text" or "request"
+	commandTimeout    time.Duration // assertion wait timeout
 
 	// Player state
 	inventory []types.InventoryItem
@@ -55,19 +57,21 @@ func NewAgent(opts ...AgentOption) *Agent {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	a := &Agent{
-		options:       DefaultOptions(),
-		state:         state.CreateInitialState(),
-		emitter:       bestevents.NewEmitter(),
-		world:         world.NewWorld(),
-		ctx:           ctx,
-		cancel:        cancel,
-		commandPrefix: "!",
-		entities:      make(map[int64]types.Entity),
-		scores:        make(map[string]int32),
-		pendingForms:  make(map[int32]types.Form),
-		tags:          make([]string, 0),
-		inventory:     make([]types.InventoryItem, 0),
-		effects:       make([]types.Effect, 0),
+		options:           DefaultOptions(),
+		state:             state.CreateInitialState(),
+		emitter:           bestevents.NewEmitter(),
+		world:             world.NewWorld(),
+		ctx:               ctx,
+		cancel:            cancel,
+		commandPrefix:     "!",
+		commandSendMethod: "text",
+		commandTimeout:    5 * time.Second,
+		entities:          make(map[int64]types.Entity),
+		scores:            make(map[string]int32),
+		pendingForms:      make(map[int32]types.Form),
+		tags:              make([]string, 0),
+		inventory:         make([]types.InventoryItem, 0),
+		effects:           make([]types.Effect, 0),
 	}
 
 	// Apply options
@@ -379,3 +383,4 @@ func (a *Agent) ClearPendingForms() {
 	defer a.mu.Unlock()
 	a.pendingForms = make(map[int32]types.Form)
 }
+

@@ -20,6 +20,8 @@ type listener struct {
 	ch      chan EventData
 	once    bool
 	handler func(EventData)
+	closed  bool
+	mu      sync.Mutex
 }
 
 // NewEmitter creates a new event emitter
@@ -79,7 +81,12 @@ func (e *Emitter) Off(event EventName, id string) {
 
 	if listeners, ok := e.listeners[event]; ok {
 		if l, exists := listeners[id]; exists {
-			close(l.ch)
+			l.mu.Lock()
+			if !l.closed {
+				l.closed = true
+				close(l.ch)
+			}
+			l.mu.Unlock()
 			delete(listeners, id)
 		}
 	}
@@ -92,27 +99,29 @@ func (e *Emitter) Emit(event EventName, data EventData) {
 	e.mu.RUnlock()
 
 	for _, l := range listeners {
-		select {
-		case l.ch <- data:
-		default:
-			// Channel full, skip this listener
+		l.mu.Lock()
+		if !l.closed {
+			select {
+			case l.ch <- data:
+			default:
+				// Channel full, skip this listener
+			}
 		}
+		l.mu.Unlock()
 	}
 }
 
 // WaitFor waits for an event with optional filter and context timeout
 func (e *Emitter) WaitFor(ctx context.Context, event EventName, filter FilterFunc) (EventData, error) {
 	ch := make(chan EventData, 1)
-	done := make(chan struct{})
+	var once sync.Once
 
 	var handlerID string
 	handlerID = e.On(event, func(data EventData) {
 		if filter == nil || filter(data) {
-			select {
-			case ch <- data:
-				close(done)
-			default:
-			}
+			once.Do(func() {
+				ch <- data
+			})
 		}
 	})
 
@@ -123,9 +132,6 @@ func (e *Emitter) WaitFor(ctx context.Context, event EventName, filter FilterFun
 	case <-ctx.Done():
 		e.Off(event, handlerID)
 		return nil, fmt.Errorf("timeout waiting for event: %s", event)
-	case <-done:
-		e.Off(event, handlerID)
-		return <-ch, nil
 	}
 }
 
@@ -183,7 +189,12 @@ func (e *Emitter) RemoveAllListeners(event EventName) {
 
 	if listeners, ok := e.listeners[event]; ok {
 		for _, l := range listeners {
-			close(l.ch)
+			l.mu.Lock()
+			if !l.closed {
+				l.closed = true
+				close(l.ch)
+			}
+			l.mu.Unlock()
 		}
 		delete(e.listeners, event)
 	}

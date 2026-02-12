@@ -26,9 +26,6 @@ type AgentInterface interface {
 	GetHunger() float32
 	GetPermissionLevel() int32
 
-	// Actions
-	Command(cmd string) (*types.CommandOutput, error)
-
 	// Form handling
 	GetPendingForm(id int32) (types.Form, bool)
 	GetLastForm() types.Form

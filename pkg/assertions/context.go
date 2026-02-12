@@ -1,18 +1,15 @@
 package assertions
 
-import (
-	"github.com/gollilla/best/pkg/types"
-)
-
 // AssertionContext provides assertion methods for an agent
 type AssertionContext struct {
 	agent AgentInterface
 
 	// Basic assertions
-	positionAssertion  *PositionAssertion
-	chatAssertion      *ChatAssertion
-	inventoryAssertion *InventoryAssertion
-	formAssertion      *FormAssertion
+	positionAssertion       *PositionAssertion
+	chatAssertion           *ChatAssertion
+	commandOutputAssertion  *CommandOutputAssertion
+	inventoryAssertion      *InventoryAssertion
+	formAssertion           *FormAssertion
 
 	// Player state assertions
 	healthAssertion     *HealthAssertion
@@ -38,6 +35,7 @@ func NewAssertionContext(a AgentInterface) *AssertionContext {
 	// Initialize assertions
 	ctx.positionAssertion = &PositionAssertion{agent: a}
 	ctx.chatAssertion = &ChatAssertion{agent: a}
+	ctx.commandOutputAssertion = &CommandOutputAssertion{agent: a}
 	ctx.inventoryAssertion = &InventoryAssertion{agent: a}
 	ctx.formAssertion = &FormAssertion{agent: a}
 
@@ -96,42 +94,15 @@ func (c *AssertionContext) Chat() *ChatAssertion {
 	return c.chatAssertion
 }
 
+// CommandOutput returns CommandOutput assertions
+// Use this to wait for CommandOutputPacket responses from the server
+func (c *AssertionContext) CommandOutput() *CommandOutputAssertion {
+	return c.commandOutputAssertion
+}
+
 // Inventory returns inventory assertions
 func (c *AssertionContext) Inventory() *InventoryAssertion {
 	return c.inventoryAssertion
-}
-
-// Command returns command assertions for the given output or executes a command
-// Accepts either:
-//   - *types.CommandOutput: for manual command execution
-//   - string: executes the command and returns assertions
-func (c *AssertionContext) Command(cmdOrOutput interface{}) *CommandAssertion {
-	var output *types.CommandOutput
-
-	switch v := cmdOrOutput.(type) {
-	case *types.CommandOutput:
-		// Use existing output
-		output = v
-	case string:
-		// Execute command and get output
-		var err error
-		output, err = c.agent.Command(v)
-		if err != nil {
-			panic(NewAssertionError(
-				"Command execution failed: "+err.Error(),
-				"successful execution",
-				"error: "+err.Error(),
-			))
-		}
-	default:
-		panic(NewAssertionError(
-			"Command expects *types.CommandOutput or string",
-			"*types.CommandOutput or string",
-			"unknown type",
-		))
-	}
-
-	return &CommandAssertion{output: output}
 }
 
 // Form returns form assertions

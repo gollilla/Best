@@ -16,8 +16,8 @@ github.com/klauspost/compress v1.18.4 h1:RPhnKRAQ4Fh8zU2FY/6ZFDwTVTxgJ/EMydqSTzE
 github.com/klauspost/compress v1.18.4/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
 github.com/sandertv/go-raknet v1.15.0 h1:OCJFvVsn5RWXOXF+gZD5uTAmy9RbOofUzOhvSyuR1tE=
 github.com/sandertv/go-raknet v1.15.0/go.mod h1:/yysjwfCXm2+2OY8mBazLzcxJ3irnylKCyG3FLgUPVU=
-github.com/sandertv/gophertunnel v1.53.0 h1:iCYuhojK06+ra/m7OE0pr2b5hCYVjUOW06sKvXofZt4=
-github.com/sandertv/gophertunnel v1.53.0/go.mod h1:F8+ZPbzxJ0LqunXEaDjqeyUgHVB0rI5ZU+PHnptXGfI=
+github.com/sandertv/gophertunnel v1.54.0 h1:iAHY+0k84GtoRVe3IEDNLScM0WRS0Rxh9YODAGjzjOM=
+github.com/sandertv/gophertunnel v1.54.0/go.mod h1:F8+ZPbzxJ0LqunXEaDjqeyUgHVB0rI5ZU+PHnptXGfI=
 golang.org/x/net v0.50.0 h1:ucWh9eiCGyDR3vtzso0WMQinm2Dnt8cFMuQa9K33J60=
 golang.org/x/net v0.50.0/go.mod h1:UgoSli3F/pBgdJBHCTc+tp3gmrU4XswgGRgtnwWTfyM=
 golang.org/x/oauth2 v0.35.0 h1:Mv2mzuHuZuY2+bkyWXIHMfhNdJAdwW3FuWeCPYN5GVQ=

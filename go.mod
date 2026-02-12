@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/go-gl/mathgl v1.2.0
 	github.com/google/uuid v1.6.0
-	github.com/sandertv/gophertunnel v1.53.0
+	github.com/sandertv/gophertunnel v1.54.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

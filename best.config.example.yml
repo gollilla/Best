@@ -15,11 +15,16 @@ agent:
   # Bot username
   username: TestBot
 
-  # Connect in offline mode (no Xbox authentication)
-  offline: false
-
   # Connection timeout in seconds
   timeout: 30
 
   # Command prefix
   commandPrefix: "/"
+
+  # Command send method: "text" (default) or "request"
+  # "text" - Send commands as chat messages (compatible with most servers)
+  # "request" - Send commands via CommandRequest packet
+  commandSendMethod: text
+
+  # Command response timeout in seconds (for assertions)
+  commandTimeout: 5

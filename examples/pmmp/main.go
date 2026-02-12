@@ -63,14 +63,18 @@ func main() {
 	// テストスイート2: コマンド実行
 	// ==========================================
 	best.Describe("コマンド実行", func() {
-		best.It("/helpコマンドを実行できるべき", func(ctx *best.TestContext) {
-			// フルエントAPIでコマンド実行とアサーション
-			agent.Expect().Command("/help").ToSucceed()
+		best.It("/helpコマンドを実行してチャットレスポンスを受け取るべき", func(ctx *best.TestContext) {
+			// コマンドを送信し、チャット（TextPacket）でレスポンスを待つ
+			// PMPPは /ban, /clear などのコマンド一覧を返す
+			agent.Command("/help")
+			agent.Expect().Chat().ToReceive("/ban", 3*time.Second, nil)
 		})
 
-		best.It("/helpコマンドの出力に特定の文字列が含まれるべき", func(ctx *best.TestContext) {
-			// チェーンでアサーションを追加
-			agent.Expect().Command("/help").ToSucceed().And().ToContain("ban")
+		best.It("/listコマンドを実行してプレイヤー一覧を受け取るべき", func(ctx *best.TestContext) {
+			// /list コマンドはプレイヤー名のリストを返す
+			// PMPPは接続中のプレイヤー名を返す
+			agent.Command("/list")
+			agent.Expect().Chat().ToReceive("BestTestBot", 3*time.Second, nil)
 		})
 
 		best.It("チャットメッセージを送信できるべき", func(ctx *best.TestContext) {
@@ -154,9 +158,11 @@ func main() {
 	// テストスイート5: 異常系テスト（エラーハンドリングの例）
 	// ==========================================
 	best.Describe("異常系テスト", func() {
-		best.It("無効なコマンドは失敗するべき", func(ctx *best.TestContext) {
-			// フルエントAPIで失敗をアサート
-			agent.Expect().Command("/this_command_does_not_exist").ToFail()
+		best.It("無効なコマンドにはエラーメッセージが含まれるべき", func(ctx *best.TestContext) {
+			// 無効なコマンドの場合、エラーメッセージが返される
+			// PMPPは "Unknown command" を返す
+			agent.Command("/this_command_does_not_exist")
+			agent.Expect().Chat().ToReceive("Unknown command", 3*time.Second, nil)
 		})
 
 		best.It("体力は有効な範囲内であるべき", func(ctx *best.TestContext) {
@@ -260,17 +266,29 @@ func main() {
 		best.It("両方のエージェントがコマンドを実行できるべき", func(ctx *best.TestContext) {
 			// サーバーが同時に同じコマンドを実行すると片方にしか応答しないため、
 			// 異なるコマンドを順番に実行する
-			agent1.Expect().Command("/help").ToSucceed()
-			agent2.Expect().Command("/list").ToSucceed()
+			// PMPPはTextPacketでレスポンスを返す
+			agent1.Command("/help")
+			agent1.Expect().Chat().ToReceive("/ban", 3*time.Second, nil)
+
+			// /listはプレイヤー名のリストを返す
+			agent2.Command("/list")
+			agent2.Expect().Chat().ToReceive("BestTestBot", 3*time.Second, nil)
 		})
 
 		best.It("エージェント1がエージェント2に対してコマンドを実行できるべき", func(ctx *best.TestContext) {
-			// エージェント1からエージェント2に対する/giveコマンドを実行
-			agent2.Expect().Command("/clear").ToSucceed()
+			// エージェント2のインベントリをクリア
+			agent2.Command("/clear")
 			time.Sleep(1 * time.Second) // インベントリ更新を待つ
 			agent2.Expect().Inventory().ToBeEmpty()
 
-			agent1.Expect().Command("/give BestTestBot2 diamond 5").ToSucceed()
+			// エージェント1からエージェント2にダイアモンドを付与
+			// タイミングの問題を避けるため、先にリスナーを設定してからコマンド実行
+			go func() {
+				time.Sleep(500 * time.Millisecond)
+				agent1.Command("/give BestTestBot2 diamond 5")
+			}()
+			// PMPPは "Diamond" を含むメッセージを返す
+			agent1.Expect().Chat().ToReceive("Diamond", 5*time.Second, nil)
 			time.Sleep(1 * time.Second) // インベントリ更新を待つ
 			// アイテム名（"diamond", "minecraft:diamond"）、NetworkID（"335"）、完全なID（"item:335"）のいずれでもOK
 			agent2.Expect().Inventory().ToHaveItemCount("diamond", 5)
