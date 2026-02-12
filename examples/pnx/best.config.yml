@@ -10,3 +10,16 @@ agent:
   commandPrefix: "/"
   # PowerNukkitXではCommandRequestパケットでコマンドを送信
   commandSendMethod: request
+
+# AI/LLM Configuration for Natural Language Scenarios
+ai:
+  provider: anthropic
+  apiKey: ${ANTHROPIC_API_KEY}
+  model: claude-sonnet-4-20250514
+  temperature: 0.3
+  maxTokens: 4096
+  timeout: 60
+  retries: 3
+  scenario:
+    verbose: true
+    stepTimeout: 30

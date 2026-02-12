@@ -289,9 +289,7 @@ func (a *Agent) GetHunger() float32 {
 
 // GetPermissionLevel returns the current permission level
 func (a *Agent) GetPermissionLevel() int32 {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	return a.permLevel
+	return a.state.PermissionLevel
 }
 
 // World returns the world manager for block and chunk access

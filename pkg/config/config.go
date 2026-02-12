@@ -10,8 +10,16 @@ import (
 
 // Config represents the configuration for Best testing framework
 type Config struct {
-	Server ServerConfig `yaml:"server"`
-	Agent  AgentConfig  `yaml:"agent"`
+	Server  ServerConfig  `yaml:"server"`
+	Agent   AgentConfig   `yaml:"agent"`
+	AI      AIConfig      `yaml:"ai,omitempty"`
+	Webhook WebhookConfig `yaml:"webhook,omitempty"`
+}
+
+// WebhookConfig contains webhook notification settings
+type WebhookConfig struct {
+	URL    string   `yaml:"url"`              // Webhook URL (supports ${ENV_VAR} syntax)
+	Events []string `yaml:"events,omitempty"` // Events to notify: "scenario_complete", "scenario_failed", "step_failed"
 }
 
 // ServerConfig contains server connection settings
@@ -30,6 +38,24 @@ type AgentConfig struct {
 	CommandTimeout    int    `yaml:"commandTimeout,omitempty"`    // assertion wait timeout in seconds
 }
 
+// AIConfig contains AI/LLM settings for scenario execution
+type AIConfig struct {
+	Provider    string         `yaml:"provider"`              // "openai" or "anthropic"
+	APIKey      string         `yaml:"apiKey"`                // API key (supports ${ENV_VAR} syntax)
+	Model       string         `yaml:"model"`                 // Model name (e.g., "gpt-4", "claude-3-sonnet")
+	Temperature float64        `yaml:"temperature,omitempty"` // Creativity (0.0-1.0)
+	MaxTokens   int            `yaml:"maxTokens,omitempty"`   // Maximum tokens
+	Timeout     int            `yaml:"timeout,omitempty"`     // API timeout in seconds
+	Retries     int            `yaml:"retries,omitempty"`     // Number of retries
+	Scenario    ScenarioConfig `yaml:"scenario,omitempty"`    // Scenario-specific settings
+}
+
+// ScenarioConfig contains scenario execution settings
+type ScenarioConfig struct {
+	Verbose     bool `yaml:"verbose,omitempty"`     // Enable verbose logging
+	StepTimeout int  `yaml:"stepTimeout,omitempty"` // Step execution timeout in seconds
+}
+
 // DefaultConfig returns a default configuration
 func DefaultConfig() *Config {
 	return &Config{
@@ -44,6 +70,23 @@ func DefaultConfig() *Config {
 			CommandPrefix:     "/",
 			CommandSendMethod: "text",
 			CommandTimeout:    5,
+		},
+		AI: DefaultAIConfig(),
+	}
+}
+
+// DefaultAIConfig returns default AI configuration
+func DefaultAIConfig() AIConfig {
+	return AIConfig{
+		Provider:    "openai",
+		Model:       "gpt-4",
+		Temperature: 0.7,
+		MaxTokens:   4096,
+		Timeout:     60,
+		Retries:     3,
+		Scenario: ScenarioConfig{
+			Verbose:     false,
+			StepTimeout: 30,
 		},
 	}
 }
@@ -119,4 +162,11 @@ func SaveConfig(config *Config, path string) error {
 	}
 
 	return nil
+}
+
+// ExpandEnvInConfig expands environment variables in the configuration
+// It supports ${VAR} and $VAR syntax
+func ExpandEnvInConfig(config *Config) {
+	config.AI.APIKey = os.ExpandEnv(config.AI.APIKey)
+	config.Webhook.URL = os.ExpandEnv(config.Webhook.URL)
 }

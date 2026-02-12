@@ -24,7 +24,7 @@ agent:
   # Command send method: "text" (default) or "request"
   # "text" - Send commands as chat messages (compatible with most servers)
   # "request" - Send commands via CommandRequest packet
-  commandSendMethod: text
+  commandSendMethod: request
 
   # Command response timeout in seconds (for assertions)
   commandTimeout: 5
@@ -32,17 +32,17 @@ agent:
 # AI/LLM Configuration for Natural Language Scenarios
 ai:
   # LLM provider: "openai" or "anthropic"
-  provider: openai
+  provider: anthropic
 
   # API key (supports environment variable expansion with ${VAR} syntax)
   # For OpenAI: set OPENAI_API_KEY environment variable
   # For Anthropic: set ANTHROPIC_API_KEY environment variable
-  apiKey: ${OPENAI_API_KEY}
+  apiKey: ${ANTHROPIC_API_KEY}
 
   # Model to use
   # OpenAI: "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo"
   # Anthropic: "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"
-  model: gpt-4
+  model: claude-sonnet-4-5-20250929
 
   # Temperature for response generation (0.0 - 1.0)
   # Lower values = more deterministic, higher values = more creative
@@ -64,21 +64,3 @@ ai:
 
     # Timeout for each step in seconds
     stepTimeout: 30
-
-# Webhook Configuration for Notifications (e.g., Discord)
-webhook:
-  # Webhook URL (supports environment variable expansion)
-  # For Discord: Create a webhook in channel settings and paste the URL
-  url: ${DISCORD_WEBHOOK_URL}
-
-  # Events to notify (optional, defaults to all if not specified)
-  # Available events:
-  # - scenario_complete: Notify when a scenario finishes (pass or fail)
-  # - scenario_failed: Notify only when a scenario fails
-  # - step_failed: Notify immediately when a step fails
-  # - summary: Notify with test summary after all scenarios complete
-  events:
-    - summary
-    # - scenario_complete
-    # - scenario_failed
-    # - step_failed

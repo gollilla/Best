@@ -56,6 +56,7 @@ func (c *Client) handleMovePlayer(pk packet.Packet) {
 }
 
 // handleStartGame handles the initial game start
+// Note: Initial state is extracted from GameData in Connect(), this handler is for reconnections
 func (c *Client) handleStartGame(pk packet.Packet) {
 	p := pk.(*packet.StartGame)
 
@@ -66,6 +67,8 @@ func (c *Client) handleStartGame(pk packet.Packet) {
 		Z: float64(p.PlayerPosition.Z()),
 	}
 	c.state.Gamemode = p.PlayerGameMode
+	c.state.PermissionLevel = int32(p.PlayerPermissions)
+	c.emitter.Emit(events.EventPermissionUpdate, int32(p.PlayerPermissions))
 }
 
 // handleUpdateAttributes handles attribute updates (health, hunger, etc.)

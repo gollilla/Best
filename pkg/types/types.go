@@ -26,6 +26,7 @@ type PlayerState struct {
 	Gamemode        int32
 	Dimension       string
 	IsOnGround      bool
+	PermissionLevel int32
 }
 
 // CommandOutput represents the result of a command execution (CommandOutputPacket)

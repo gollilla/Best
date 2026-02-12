@@ -86,7 +86,7 @@ func (a *Agent) sendCommandViaRequest(cmd string) error {
 
 // Goto teleports the player to the specified position
 func (a *Agent) Goto(pos types.Position) error {
-	cmd := fmt.Sprintf("/tp @s %.2f %.2f %.2f", pos.X, pos.Y, pos.Z)
+	cmd := fmt.Sprintf("/tp %s %.2f %.2f %.2f", a.Username(), pos.X, pos.Y, pos.Z)
 	return a.Command(cmd)
 }
 
