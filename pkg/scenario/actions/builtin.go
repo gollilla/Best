@@ -551,12 +551,12 @@ func registerBuiltinAssertions(r *Registry) {
 			return fmt.Errorf("value parameter is required and must be a number")
 		}
 
-		actual, found := a.GetScore(objective)
-		if !found {
+		actual := a.GetScore(objective)
+		if actual == nil {
 			return fmt.Errorf("スコアボード '%s' が見つかりません", objective)
 		}
-		if int32(expected) != actual {
-			return fmt.Errorf("スコアボード '%s' の値が一致しません（期待: %v, 実際: %v）", objective, int32(expected), actual)
+		if int32(expected) != *actual {
+			return fmt.Errorf("スコアボード '%s' の値が一致しません（期待: %v, 実際: %v）", objective, int32(expected), *actual)
 		}
 		return nil
 	})

@@ -27,6 +27,21 @@ type PlayerState struct {
 	Dimension       string
 	IsOnGround      bool
 	PermissionLevel int32
+	Scoreboard      *ScoreboardState // Scoreboard state
+}
+
+// ScoreboardState tracks the current scoreboard state
+type ScoreboardState struct {
+	Objectives map[string]*ScoreboardObjective // Map of objective name to objective
+	Entries    map[int64]*ScoreboardEntry      // Map of entry ID to entry
+}
+
+// ScoreboardObjective represents a scoreboard objective
+type ScoreboardObjective struct {
+	Name        string
+	DisplayName string
+	DisplaySlot string // "sidebar", "list", "belowname"
+	SortOrder   int32  // 0=ascending, 1=descending
 }
 
 // CommandOutput represents the result of a command execution (CommandOutputPacket)
@@ -159,10 +174,27 @@ type BlockBreakData struct {
 
 // ScoreboardEntry represents a scoreboard entry
 type ScoreboardEntry struct {
-	Objective   string
-	Score       int32
-	DisplayName *string
+	EntryID        int64   // Unique identifier for this entry
+	ObjectiveName  string  // Name of the objective
+	Score          int32   // Score value
+	IdentityType   byte    // Player(1), Entity(2), FakePlayer(3)
+	EntityUniqueID int64   // Unique ID of player/entity (if IdentityType is 1 or 2)
+	DisplayName    string  // Custom display name (used for FakePlayer)
+	ActionType     byte    // Add/Modify(0) or Remove(1)
 }
+
+// ScoreboardIdentity types
+const (
+	ScoreboardIdentityPlayer     byte = 1
+	ScoreboardIdentityEntity     byte = 2
+	ScoreboardIdentityFakePlayer byte = 3
+)
+
+// ScoreboardAction types
+const (
+	ScoreboardActionModify byte = 0 // Add or modify entries
+	ScoreboardActionRemove byte = 1 // Remove entries
+)
 
 // TitleDisplay represents a title/subtitle/actionbar display
 type TitleDisplay struct {

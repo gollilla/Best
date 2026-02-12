@@ -126,33 +126,68 @@ func main() {
 	})
 
 	// ==========================================
-	// テストスイート4: スコアボード 未実装
+	// テストスイート4: スコアボード操作
 	// ==========================================
-	/**best.Describe("スコアボード操作", func() {
+	best.Describe("スコアボード操作", func() {
 		best.It("スコアボード目標を作成できるべき", func(ctx *best.TestContext) {
-			agent.Command("/scoreboard objectives add test_score dummy Test Score")
-			agent.Expect().Scoreboard().ToHaveObjective("test_score", 3*time.Second)
+			// スコアボード目標を作成してサイドバーに表示
+			go func() {
+				time.Sleep(500 * time.Millisecond)
+				agent.Command("/scoreboard objectives add test_score dummy \"Test Score\"")
+				time.Sleep(200 * time.Millisecond)
+				agent.Command("/scoreboard objectives setdisplay sidebar test_score")
+			}()
+			agent.Expect().Scoreboard().ToHaveObjective("test_score", 5*time.Second)
+		})
+
+		best.It("サイドバーに表示されるべき", func(ctx *best.TestContext) {
+			agent.Expect().Scoreboard().ToHaveDisplaySlot("test_score", "sidebar", 3*time.Second)
 		})
 
 		best.It("スコアを設定できるべき", func(ctx *best.TestContext) {
-			agent.Command("/scoreboard players set @s test_score 100")
-			agent.Expect().Scoreboard().ToHaveScore("test_score", 100, 3*time.Second)
+			go func() {
+				time.Sleep(500 * time.Millisecond)
+				agent.Command("/scoreboard players set @s test_score 100")
+			}()
+			agent.Expect().Scoreboard().ToHaveScore("test_score", 100, 5*time.Second)
 		})
 
 		best.It("スコアを増加できるべき", func(ctx *best.TestContext) {
 			agent.Command("/scoreboard players add @s test_score 50")
-			agent.Expect().Scoreboard().ToHaveScoreAbove("test_score", 100, 3*time.Second)
+			// 100 + 50 = 150
+			agent.Expect().Scoreboard().ToHaveScoreAbove("test_score", 100, 5*time.Second)
 		})
 
 		best.It("スコアが範囲内にあるべき", func(ctx *best.TestContext) {
-			agent.Expect().Scoreboard().ToHaveScoreBetween("test_score", 100, 200, 2*time.Second)
+			agent.Expect().Scoreboard().ToHaveScoreBetween("test_score", 100, 200, 3*time.Second)
+		})
+
+		best.It("スコア値を直接取得して汎用アサーションでチェックできるべき", func(ctx *best.TestContext) {
+			// スコア値を取得（Agentのメソッドを直接使用）
+			score := agent.GetScore("test_score")
+			assertions.NotNil(score, "スコアが存在するべき")
+			assertions.Equal(*score, int32(150), "スコアは150であるべき")
+			assertions.GreaterThan(float64(*score), 100.0, "スコアは100より大きいべき")
+			assertions.InRange(float64(*score), 100, 200, "スコアは100-200の範囲内であるべき")
+		})
+
+		best.It("フェイクプレイヤーのスコアを設定できるべき", func(ctx *best.TestContext) {
+			agent.Command("/scoreboard players set TestPlayer test_score 999")
+			agent.Expect().Scoreboard().ToHaveFakePlayerScore("test_score", "TestPlayer", 999, 5*time.Second)
+		})
+
+		best.It("フェイクプレイヤーのスコアを取得できるべき", func(ctx *best.TestContext) {
+			// フェイクプレイヤーのスコアを取得（Agentのメソッドを直接使用）
+			score := agent.GetScoreByPlayer("test_score", "TestPlayer")
+			assertions.NotNil(score, "TestPlayerのスコアが存在するべき")
+			assertions.Equal(*score, int32(999), "TestPlayerのスコアは999であるべき")
 		})
 
 		best.It("スコアボード目標を削除できるべき", func(ctx *best.TestContext) {
 			agent.Command("/scoreboard objectives remove test_score")
-			agent.Expect().Scoreboard().NotToHaveObjective("test_score", 3*time.Second)
+			agent.Expect().Scoreboard().NotToHaveObjective("test_score", 5*time.Second)
 		})
-	})**/
+	})
 
 	// ==========================================
 	// テストスイート5: 異常系テスト（エラーハンドリングの例）
@@ -277,6 +312,10 @@ func main() {
 		})
 
 		best.It("エージェント1がエージェント2に対してコマンドを実行できるべき", func(ctx *best.TestContext) {
+			// エージェント1のインベントリをクリア
+			agent1.Command("/clear")
+			agent1.Expect().CommandOutput().ToReceiveAny(3 * time.Second)
+			time.Sleep(500 * time.Millisecond) // インベントリ更新を待つ
 			// エージェント2のインベントリをクリア
 			agent2.Command("/clear")
 			agent2.Expect().CommandOutput().ToReceiveAny(3 * time.Second)
@@ -284,10 +323,10 @@ func main() {
 
 			// エージェント1からエージェント2にダイアモンドを付与
 			agent1.Command("/give MultiAgent2 diamond 5")
-			// PNXはCommandOutputパケットで応答を返す
-			agent1.Expect().CommandOutput().ToContain("diamond", 5*time.Second)
+			agent2.Command("/give MultiAgent1 bed 3")
 			time.Sleep(500 * time.Millisecond) // インベントリ更新を待つ
-			// アイテム名（"diamond", "minecraft:diamond"）、NetworkID（"335"）、完全なID（"item:335"）のいずれでもOK
+
+			agent1.Expect().Inventory().ToHaveItemCount("bed", 3)
 			agent2.Expect().Inventory().ToHaveItemCount("diamond", 5)
 		})
 	})
