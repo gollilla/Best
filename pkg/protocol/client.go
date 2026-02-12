@@ -80,6 +80,22 @@ func (c *Client) Connect(opts types.ClientOptions) error {
 
 	c.conn = conn
 
+	// Extract initial state from GameData (before handlers are registered)
+	gameData := conn.GameData()
+	c.state.Position = types.Position{
+		X: float64(gameData.PlayerPosition.X()),
+		Y: float64(gameData.PlayerPosition.Y()),
+		Z: float64(gameData.PlayerPosition.Z()),
+	}
+	c.state.Gamemode = gameData.PlayerGameMode
+	c.state.PermissionLevel = gameData.PlayerPermissions
+
+	// Initialize scoreboard state
+	c.state.Scoreboard = &types.ScoreboardState{
+		Objectives: make(map[string]*types.ScoreboardObjective),
+		Entries:    make(map[int64]*types.ScoreboardEntry),
+	}
+
 	// Register packet handlers
 	c.registerHandlers()
 

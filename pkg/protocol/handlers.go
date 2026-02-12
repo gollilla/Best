@@ -176,54 +176,84 @@ func (c *Client) handleSetTitle(pk packet.Packet) {
 // handleSetScore handles scoreboard score updates
 func (c *Client) handleSetScore(pk packet.Packet) {
 	p := pk.(*packet.SetScore)
-	fmt.Printf("[DEBUG] SetScore packet received with %d entries\n", len(p.Entries))
 
 	for _, entry := range p.Entries {
-		fmt.Printf("[DEBUG] Score entry - Objective: %s, Score: %d, DisplayName: %s\n",
-			entry.ObjectiveName, entry.Score, entry.DisplayName)
-
+		// Create score entry with all fields
 		scoreEntry := &types.ScoreboardEntry{
-			Objective: entry.ObjectiveName,
-			Score:     entry.Score,
+			EntryID:        entry.EntryID,
+			ObjectiveName:  entry.ObjectiveName,
+			Score:          entry.Score,
+			IdentityType:   entry.IdentityType,
+			EntityUniqueID: entry.EntityUniqueID,
+			DisplayName:    entry.DisplayName,
+			ActionType:     p.ActionType,
 		}
 
-		// Set display name if available
-		if entry.DisplayName != "" {
-			displayName := entry.DisplayName
-			scoreEntry.DisplayName = &displayName
+		// Update scoreboard state
+		if c.state.Scoreboard != nil {
+			if p.ActionType == types.ScoreboardActionModify {
+				// Add or update entry
+				c.state.Scoreboard.Entries[entry.EntryID] = scoreEntry
+			} else if p.ActionType == types.ScoreboardActionRemove {
+				// Remove entry
+				delete(c.state.Scoreboard.Entries, entry.EntryID)
+			}
 		}
 
+		// Emit event
 		c.emitter.Emit(events.EventScoreUpdate, scoreEntry)
-		fmt.Printf("[DEBUG] Emitted EventScoreUpdate for %s\n", entry.ObjectiveName)
 	}
 }
 
 // handleSetDisplayObjective handles scoreboard display changes
 func (c *Client) handleSetDisplayObjective(pk packet.Packet) {
 	p := pk.(*packet.SetDisplayObjective)
-	fmt.Printf("[DEBUG] SetDisplayObjective packet - Slot: %s, Objective: %s\n",
-		p.DisplaySlot, p.ObjectiveName)
 
-	// Emit display objective change
+	// Update scoreboard state
+	if c.state.Scoreboard != nil {
+		objective := &types.ScoreboardObjective{
+			Name:        p.ObjectiveName,
+			DisplayName: p.DisplayName,
+			DisplaySlot: p.DisplaySlot,
+			SortOrder:   p.SortOrder,
+		}
+		c.state.Scoreboard.Objectives[p.ObjectiveName] = objective
+	}
+
+	// Emit display objective change with detailed info
 	displayInfo := map[string]interface{}{
 		"displaySlot":   p.DisplaySlot,
 		"objectiveName": p.ObjectiveName,
 		"displayName":   p.DisplayName,
 		"sortOrder":     p.SortOrder,
+		"action":        "display", // Indicate this is a display action
 	}
 
 	c.emitter.Emit(events.EventScoreUpdate, displayInfo)
-	fmt.Printf("[DEBUG] Emitted EventScoreUpdate (display objective)\n")
 }
 
 // handleRemoveObjective handles scoreboard objective removal
 func (c *Client) handleRemoveObjective(pk packet.Packet) {
 	p := pk.(*packet.RemoveObjective)
 
+	// Update scoreboard state
+	if c.state.Scoreboard != nil {
+		// Remove objective from state
+		delete(c.state.Scoreboard.Objectives, p.ObjectiveName)
+
+		// Remove all entries associated with this objective
+		for entryID, entry := range c.state.Scoreboard.Entries {
+			if entry.ObjectiveName == p.ObjectiveName {
+				delete(c.state.Scoreboard.Entries, entryID)
+			}
+		}
+	}
+
 	// Emit objective removal
 	removeInfo := map[string]interface{}{
 		"objectiveName": p.ObjectiveName,
 		"removed":       true,
+		"action":        "remove", // Indicate this is a remove action
 	}
 
 	c.emitter.Emit(events.EventScoreUpdate, removeInfo)

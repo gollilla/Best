@@ -263,12 +263,89 @@ func (a *Agent) GetEntities() []types.Entity {
 	return entities
 }
 
-// GetScore returns a score value for an objective
-func (a *Agent) GetScore(objective string) (int32, bool) {
+// GetScore returns the agent's current score in the specified objective
+// Returns nil if the score is not found
+func (a *Agent) GetScore(objectiveName string) *int32 {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
-	score, ok := a.scores[objective]
-	return score, ok
+
+	if a.state.Scoreboard == nil {
+		return nil
+	}
+
+	// Get agent's EntityUniqueID
+	agentEntityID := a.state.RuntimeEntityID
+
+	// Search for the agent's score entry
+	for _, entry := range a.state.Scoreboard.Entries {
+		if entry.ObjectiveName == objectiveName && entry.EntityUniqueID == agentEntityID {
+			score := entry.Score
+			return &score
+		}
+	}
+
+	return nil
+}
+
+// GetScoreByPlayer returns the score for a specific player (by display name)
+// Returns nil if the score is not found
+func (a *Agent) GetScoreByPlayer(objectiveName string, displayName string) *int32 {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	if a.state.Scoreboard == nil {
+		return nil
+	}
+
+	// Search for the player's score entry
+	for _, entry := range a.state.Scoreboard.Entries {
+		if entry.ObjectiveName == objectiveName && entry.DisplayName == displayName {
+			score := entry.Score
+			return &score
+		}
+	}
+
+	return nil
+}
+
+// GetScoreByEntityID returns the score for a specific entity ID
+// Returns nil if the score is not found
+func (a *Agent) GetScoreByEntityID(objectiveName string, entityID int64) *int32 {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	if a.state.Scoreboard == nil {
+		return nil
+	}
+
+	// Search for the entity's score entry
+	for _, entry := range a.state.Scoreboard.Entries {
+		if entry.ObjectiveName == objectiveName && entry.EntityUniqueID == entityID {
+			score := entry.Score
+			return &score
+		}
+	}
+
+	return nil
+}
+
+// GetAllScores returns all score entries for the specified objective
+func (a *Agent) GetAllScores(objectiveName string) []types.ScoreboardEntry {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	if a.state.Scoreboard == nil {
+		return []types.ScoreboardEntry{}
+	}
+
+	var scores []types.ScoreboardEntry
+	for _, entry := range a.state.Scoreboard.Entries {
+		if entry.ObjectiveName == objectiveName {
+			scores = append(scores, *entry)
+		}
+	}
+
+	return scores
 }
 
 // GetTags returns a copy of player tags
@@ -289,9 +366,7 @@ func (a *Agent) GetHunger() float32 {
 
 // GetPermissionLevel returns the current permission level
 func (a *Agent) GetPermissionLevel() int32 {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-	return a.permLevel
+	return a.state.PermissionLevel
 }
 
 // World returns the world manager for block and chunk access

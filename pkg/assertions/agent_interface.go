@@ -21,10 +21,15 @@ type AgentInterface interface {
 	GetInventory() []types.InventoryItem
 	GetEffects() []types.Effect
 	GetEntities() []types.Entity
-	GetScore(objective string) (int32, bool)
 	GetTags() []string
 	GetHunger() float32
 	GetPermissionLevel() int32
+
+	// Scoreboard
+	GetScore(objectiveName string) *int32
+	GetScoreByPlayer(objectiveName string, displayName string) *int32
+	GetScoreByEntityID(objectiveName string, entityID int64) *int32
+	GetAllScores(objectiveName string) []types.ScoreboardEntry
 
 	// Form handling
 	GetPendingForm(id int32) (types.Form, bool)

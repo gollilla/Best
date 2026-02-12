@@ -16,7 +16,9 @@ require (
 	github.com/df-mc/jsonc v1.0.5 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/klauspost/compress v1.18.4 // indirect
+	github.com/liushuangls/go-anthropic/v2 v2.17.0 // indirect
 	github.com/sandertv/go-raknet v1.15.0 // indirect
+	github.com/sashabaranov/go-openai v1.41.2 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/text v0.34.0 // indirect

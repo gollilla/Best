@@ -10,6 +10,7 @@ import (
 	"github.com/gollilla/best/pkg/config"
 	"github.com/gollilla/best/pkg/events"
 	"github.com/gollilla/best/pkg/runner"
+	"github.com/gollilla/best/pkg/scenario"
 	"github.com/gollilla/best/pkg/types"
 	"github.com/gollilla/best/pkg/world"
 )
@@ -219,11 +220,14 @@ var (
 type Config = config.Config
 type ServerConfig = config.ServerConfig
 type AgentConfig = config.AgentConfig
+type AIConfig = config.AIConfig
+type ScenarioConfig = config.ScenarioConfig
 
 var (
 	LoadConfig         = config.LoadConfig
 	LoadConfigFromFile = config.LoadConfigFromFile
 	DefaultConfig      = config.DefaultConfig
+	DefaultAIConfig    = config.DefaultAIConfig
 	SaveConfig         = config.SaveConfig
 )
 
@@ -249,3 +253,40 @@ func NewAgentFromConfig(cfg *Config) *Agent {
 
 	return NewAgent(options...)
 }
+
+// Scenario types
+type ScenarioRunner = scenario.Runner
+type ScenarioResult = scenario.Result
+type ScenarioStep = scenario.ScenarioStep
+type ScenarioStepResult = scenario.StepResult
+type ScenarioStepStatus = scenario.StepStatus
+type ScenarioOption = scenario.Option
+type ScenarioReporter = scenario.Reporter
+
+const (
+	ScenarioStepPending  = scenario.StepStatusPending
+	ScenarioStepRunning  = scenario.StepStatusRunning
+	ScenarioStepPassed   = scenario.StepStatusPassed
+	ScenarioStepFailed   = scenario.StepStatusFailed
+	ScenarioStepSkipped  = scenario.StepStatusSkipped
+)
+
+var (
+	// Scenario runner functions
+	NewScenarioRunner            = scenario.NewRunner
+	RunScenarioFromString        = scenario.RunFromString
+	RunScenarioFromFile          = scenario.RunFromFile
+	RunScenarioFromStringWithCfg = scenario.RunFromStringWithConfig
+	RunScenarioFromFileWithCfg   = scenario.RunFromFileWithConfig
+
+	// Scenario options
+	ScenarioWithTimeout     = scenario.WithTimeout
+	ScenarioWithStepTimeout = scenario.WithStepTimeout
+	ScenarioWithVerbose     = scenario.WithVerbose
+	ScenarioWithOnStepStart = scenario.WithOnStepStart
+	ScenarioWithOnStepEnd   = scenario.WithOnStepEnd
+
+	// Scenario reporter
+	NewScenarioConsoleReporter = scenario.NewConsoleReporter
+	ScenarioStepReporter       = scenario.StepReporter
+)
