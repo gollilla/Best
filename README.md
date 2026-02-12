@@ -42,54 +42,7 @@ agent:
   commandTimeout: 5
 ```
 
-### 基本的な接続
-
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "time"
-
-    "github.com/gollilla/best"
-)
-
-func main() {
-    // エージェント作成
-    agent := best.createAgent("TestBot")
-
-    // イベントリスナー登録
-    agent.Emitter().On(best.EventChat, func(data best.EventData) {
-        msg := data.(*best.ChatMessage)
-        fmt.Printf("[%s]: %s\n", msg.Sender, msg.Message)
-    })
-
-    // 接続
-    if err := agent.Connect(); err != nil {
-        panic(err)
-    }
-    defer agent.Disconnect()
-
-    // スポーン待機
-    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-    defer cancel()
-
-    agent.WaitForSpawn(ctx)
-
-    // チャット送信
-    agent.Chat("Hello, world!")
-
-    // コマンド実行（レスポンスはアサーションで待機）
-    agent.Command("/help")
-    agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
-}
-```
-
 ### コマンド実行
-
-コマンドの実行とレスポンスの待機は分離されています：
-
 ```go
 // コマンド送信
 agent.Command("/say hello")
