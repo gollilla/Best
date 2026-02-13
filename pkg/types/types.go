@@ -121,6 +121,59 @@ type FormElement interface {
 	GetType() string
 }
 
+// Label represents a text label in a custom form
+type Label struct {
+	Text string
+}
+
+func (l *Label) GetType() string { return "label" }
+
+// Input represents a text input field in a custom form
+type Input struct {
+	Text        string // Label text
+	Placeholder string // Placeholder text
+	Default     string // Default value
+}
+
+func (i *Input) GetType() string { return "input" }
+
+// Toggle represents a toggle switch in a custom form
+type Toggle struct {
+	Text    string // Label text
+	Default bool   // Default state
+}
+
+func (t *Toggle) GetType() string { return "toggle" }
+
+// Slider represents a slider in a custom form
+type Slider struct {
+	Text    string  // Label text
+	Min     float64 // Minimum value
+	Max     float64 // Maximum value
+	Step    float64 // Step size
+	Default float64 // Default value
+}
+
+func (s *Slider) GetType() string { return "slider" }
+
+// Dropdown represents a dropdown list in a custom form
+type Dropdown struct {
+	Text    string   // Label text
+	Options []string // Available options
+	Default int      // Default selected index
+}
+
+func (d *Dropdown) GetType() string { return "dropdown" }
+
+// StepSlider represents a step slider in a custom form
+type StepSlider struct {
+	Text    string   // Label text
+	Steps   []string // Available steps
+	Default int      // Default selected index
+}
+
+func (s *StepSlider) GetType() string { return "step_slider" }
+
 // InventoryItem represents an item in inventory
 type InventoryItem struct {
 	ID           string

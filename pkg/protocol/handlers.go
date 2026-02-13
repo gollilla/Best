@@ -293,7 +293,11 @@ func (c *Client) handleModalFormRequest(pk packet.Packet) {
 	case "form":
 		// ActionForm: List of buttons
 		content, _ := formData["content"].(string)
+		// Note: Some servers use "elements" instead of "buttons" for ActionForm
 		buttonsData, _ := formData["buttons"].([]interface{})
+		if buttonsData == nil {
+			buttonsData, _ = formData["elements"].([]interface{})
+		}
 
 		buttons := make([]types.ActionButton, 0, len(buttonsData))
 		for _, btnData := range buttonsData {
@@ -326,14 +330,98 @@ func (c *Client) handleModalFormRequest(pk packet.Packet) {
 
 	case "custom_form":
 		// CustomForm: Form with input elements
-		// contentData, _ := formData["content"].([]interface{})
+		contentData, _ := formData["content"].([]interface{})
 
-		// For now, store the raw content
-		// Full implementation would parse each element type
+		elements := make([]types.FormElement, 0, len(contentData))
+		for _, elemData := range contentData {
+			elemMap, ok := elemData.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			elemType, _ := elemMap["type"].(string)
+
+			switch elemType {
+			case "label":
+				text, _ := elemMap["text"].(string)
+				elements = append(elements, &types.Label{
+					Text: text,
+				})
+
+			case "input":
+				text, _ := elemMap["text"].(string)
+				placeholder, _ := elemMap["placeholder"].(string)
+				defaultVal, _ := elemMap["default"].(string)
+				elements = append(elements, &types.Input{
+					Text:        text,
+					Placeholder: placeholder,
+					Default:     defaultVal,
+				})
+
+			case "toggle":
+				text, _ := elemMap["text"].(string)
+				defaultVal, _ := elemMap["default"].(bool)
+				elements = append(elements, &types.Toggle{
+					Text:    text,
+					Default: defaultVal,
+				})
+
+			case "slider":
+				text, _ := elemMap["text"].(string)
+				min, _ := elemMap["min"].(float64)
+				max, _ := elemMap["max"].(float64)
+				step, _ := elemMap["step"].(float64)
+				defaultVal, _ := elemMap["default"].(float64)
+				elements = append(elements, &types.Slider{
+					Text:    text,
+					Min:     min,
+					Max:     max,
+					Step:    step,
+					Default: defaultVal,
+				})
+
+			case "dropdown":
+				text, _ := elemMap["text"].(string)
+				optionsData, _ := elemMap["options"].([]interface{})
+				defaultIdx, _ := elemMap["default"].(float64)
+
+				options := make([]string, 0, len(optionsData))
+				for _, opt := range optionsData {
+					if optStr, ok := opt.(string); ok {
+						options = append(options, optStr)
+					}
+				}
+
+				elements = append(elements, &types.Dropdown{
+					Text:    text,
+					Options: options,
+					Default: int(defaultIdx),
+				})
+
+			case "step_slider":
+				text, _ := elemMap["text"].(string)
+				stepsData, _ := elemMap["steps"].([]interface{})
+				defaultIdx, _ := elemMap["default"].(float64)
+
+				steps := make([]string, 0, len(stepsData))
+				for _, step := range stepsData {
+					if stepStr, ok := step.(string); ok {
+						steps = append(steps, stepStr)
+					}
+				}
+
+				elements = append(elements, &types.StepSlider{
+					Text:    text,
+					Steps:   steps,
+					Default: int(defaultIdx),
+				})
+			}
+		}
+
 		form = &types.CustomForm{
 			ID:      int32(p.FormID),
 			Title:   title,
-			Content: nil, // TODO: Parse form elements
+			Content: elements,
 		}
 
 	default:
