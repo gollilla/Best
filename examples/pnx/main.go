@@ -85,7 +85,45 @@ func main() {
 	})
 
 	// ==========================================
-	// テストスイート3: タイトル/サブタイトル
+	// テストスイート3: 権限レベル変更
+	// ==========================================
+	best.Describe("権限レベル変更", func() {
+		best.It("初期状態ではオペレーター権限を持つべき（ops.txt登録済み）", func(ctx *best.TestContext) {
+			agent.Expect().Permission().ToBeOperator()
+		})
+
+		best.It("マルチエージェントがOP権限を削除すると権限レベルが変更されるべき", func(ctx *best.TestContext) {
+			// 別のエージェントを作成（テスト用）
+			testAgent := best.CreateAgent("TestPermBot")
+			if err := testAgent.Connect(); err != nil {
+				panic(err)
+			}
+			defer testAgent.Disconnect()
+			time.Sleep(1 * time.Second)
+
+			// 初期状態を確認（ops.txt未登録なので権限レベル1）
+			initialLevel := testAgent.GetPermissionLevel()
+			assertions.Equal(initialLevel, int32(1), "TestPermBotは初期状態でモデレーターレベルであるべき")
+
+			// BestTestBotからTestPermBotをOPする
+			agent.Command("/op TestPermBot")
+			time.Sleep(1 * time.Second)
+
+			// 権限レベルが2に変更されたことを確認
+			testAgent.Expect().Permission().ToBeOperator()
+
+			// BestTestBotからTestPermBotをDEOPする
+			agent.Command("/deop TestPermBot")
+			time.Sleep(1 * time.Second)
+
+			// 権限レベルが1に戻ったことを確認
+			finalLevel := testAgent.GetPermissionLevel()
+			assertions.Equal(finalLevel, int32(1), "DEOPされたTestPermBotはモデレーターレベルに戻るべき")
+		})
+	})
+
+	// ==========================================
+	// テストスイート4: タイトル/サブタイトル
 	// ==========================================
 	best.Describe("タイトル/サブタイトル表示", func() {
 		best.It("タイトルメッセージを受信するべき", func(ctx *best.TestContext) {
@@ -126,7 +164,7 @@ func main() {
 	})
 
 	// ==========================================
-	// テストスイート4: スコアボード操作
+	// テストスイート5: スコアボード操作
 	// ==========================================
 	best.Describe("スコアボード操作", func() {
 		best.It("スコアボード目標を作成できるべき", func(ctx *best.TestContext) {
@@ -190,7 +228,7 @@ func main() {
 	})
 
 	// ==========================================
-	// テストスイート5: 異常系テスト（エラーハンドリングの例）
+	// テストスイート6: 異常系テスト（エラーハンドリングの例）
 	// ==========================================
 	best.Describe("異常系テスト", func() {
 		best.It("無効なコマンドにはエラーメッセージが含まれるべき", func(ctx *best.TestContext) {
@@ -231,7 +269,7 @@ func main() {
 	})
 
 	// ==========================================
-	// テストスイート6: マルチエージェント（2体のエージェント）
+	// テストスイート7: マルチエージェント（2体のエージェント）
 	// ==========================================
 	best.Describe("マルチエージェント連携", func() {
 		var agent1 *best.Agent

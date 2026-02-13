@@ -96,6 +96,21 @@ func (c *Client) handleSetPlayerGameType(pk packet.Packet) {
 	c.emitter.Emit(events.EventGamemodeUpdate, p.GameType)
 }
 
+// handleUpdateAbilities handles permission and ability updates via UpdateAbilities packet
+// This is used in newer protocol versions (v1.19.10+)
+func (c *Client) handleUpdateAbilities(pk packet.Packet) {
+	p := pk.(*packet.UpdateAbilities)
+
+	// Extract permission level from AbilityData
+	newPermLevel := int32(p.AbilityData.PlayerPermissions)
+
+	// Update permission level if it changed
+	if c.state.PermissionLevel != newPermLevel {
+		c.state.PermissionLevel = newPermLevel
+		c.emitter.Emit(events.EventPermissionUpdate, newPermLevel)
+	}
+}
+
 // handleDisconnect handles disconnection
 func (c *Client) handleDisconnect(pk packet.Packet) {
 	p := pk.(*packet.Disconnect)

@@ -421,15 +421,16 @@ func registerBuiltinAssertions(r *Registry) {
 	})
 
 	// assert_permission_operator - Assert that player is an operator
-	// Checks by running /op command and verifying usage info is returned (not permission denied)
+	// Checks permission level directly (level 2 or higher = operator)
 	r.RegisterAssertion("assert_permission_operator", AssertionDefinition{
 		Description: "プレイヤーがオペレーター権限を持っていることを確認する",
 		Parameters:  []ParameterDef{},
 	}, func(ctx context.Context, a *agent.Agent, params map[string]interface{}) error {
-		// Run /op command to check if player has operator permission
-		a.Command("/op")
-		// If we get usage info or any response (not permission denied), we're an operator
-		a.Expect().CommandOutput().ToReceiveAny(3 * time.Second)
+		// Check permission level directly
+		level := a.GetPermissionLevel()
+		if level < 2 {
+			return fmt.Errorf("オペレーター権限がありません（権限レベル: %d, 必要: 2以上）", level)
+		}
 		return nil
 	})
 

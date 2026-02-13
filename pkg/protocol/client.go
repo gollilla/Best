@@ -212,6 +212,7 @@ func (c *Client) registerHandlers() {
 	c.RegisterHandler(packet.IDStartGame, c.handleStartGame)
 	c.RegisterHandler(packet.IDUpdateAttributes, c.handleUpdateAttributes)
 	c.RegisterHandler(packet.IDSetPlayerGameType, c.handleSetPlayerGameType)
+	c.RegisterHandler(packet.IDUpdateAbilities, c.handleUpdateAbilities)
 	c.RegisterHandler(packet.IDDisconnect, c.handleDisconnect)
 	c.RegisterHandler(packet.IDCommandOutput, c.handleCommandOutput)
 
