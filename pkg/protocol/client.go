@@ -2,8 +2,9 @@ package protocol
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"strings"
+	"math/big"
 	"sync"
 
 	"github.com/google/uuid"
@@ -62,8 +63,8 @@ func (c *Client) Connect(opts types.ClientOptions) error {
 	if opts.Username != "" {
 		// Generate unique XUID for each player to avoid UUID collision in PNX
 		// PNX generates UUID from XUID: UUID.nameUUIDFromBytes(("pocket-auth-1-xuid:" + xuid).getBytes())
-		// Use full UUID string (without hyphens) for guaranteed uniqueness
-		xuid := strings.ReplaceAll(uuid.New().String(), "-", "")
+		// XUID should be 16 digits to match Xbox Live format and database constraints
+		xuid := generateXUID()
 		dialer.IdentityData = login.IdentityData{
 			DisplayName: opts.Username,
 			Identity:    uuid.New().String(),
@@ -236,4 +237,27 @@ func (c *Client) registerHandlers() {
 // GetConn returns the underlying minecraft.Conn
 func (c *Client) GetConn() *minecraft.Conn {
 	return c.conn
+}
+
+// generateXUID generates a 16-digit XUID string similar to Xbox Live XUIDs
+// Format: 16 digits (e.g., "2535405290845189")
+// This avoids database length issues (some plugins expect max 20 characters)
+func generateXUID() string {
+	// Generate a random number between 1000000000000000 and 9999999999999999
+	min := big.NewInt(1000000000000000)
+	max := big.NewInt(9999999999999999)
+
+	// Calculate range
+	rangeBig := new(big.Int).Sub(max, min)
+	rangeBig.Add(rangeBig, big.NewInt(1))
+
+	// Generate random number in range
+	n, err := rand.Int(rand.Reader, rangeBig)
+	if err != nil {
+		// Fallback to a deterministic value if random fails
+		return "1000000000000000"
+	}
+
+	n.Add(n, min)
+	return n.String()
 }
