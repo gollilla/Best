@@ -429,12 +429,52 @@ func (a *Agent) SubmitForm(formID int32, response types.FormResponse) error {
 		return fmt.Errorf("not connected")
 	}
 
+	// Get the pending form to determine its type
+	a.mu.RLock()
+	form, exists := a.pendingForms[formID]
+	a.mu.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("form with ID %d not found", formID)
+	}
+
 	// Create form response packet
 	var responseData []byte
 	var err error
 
-	// Marshal response to JSON
-	responseData, err = json.Marshal(response)
+	// Marshal response to JSON based on form type
+	switch form.(type) {
+	case *types.CustomForm:
+		// CustomForm expects an array of values
+		// If response is already a slice, use it directly
+		// Otherwise, wrap it in an array
+		switch v := response.(type) {
+		case []interface{}:
+			responseData, err = json.Marshal(v)
+		case string:
+			// Single string input -> wrap in array
+			responseData, err = json.Marshal([]string{v})
+		case int, int32, int64, float32, float64:
+			// Single numeric input -> wrap in array
+			responseData, err = json.Marshal([]interface{}{v})
+		case bool:
+			// Single boolean input -> wrap in array
+			responseData, err = json.Marshal([]interface{}{v})
+		default:
+			// Try to wrap in array as-is
+			responseData, err = json.Marshal([]interface{}{v})
+		}
+	case *types.ActionForm:
+		// ActionForm expects a button index (integer or null)
+		responseData, err = json.Marshal(response)
+	case *types.ModalForm:
+		// ModalForm expects a boolean (true/false or null)
+		responseData, err = json.Marshal(response)
+	default:
+		// Unknown form type, marshal as-is
+		responseData, err = json.Marshal(response)
+	}
+
 	if err != nil {
 		return fmt.Errorf("failed to marshal form response: %w", err)
 	}
