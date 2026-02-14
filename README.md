@@ -1,13 +1,17 @@
 # Best - Bedrock Edition Server Testing
 
-統合版マインクラフト（Minecraft Bedrock Edition）のサーバー用テストライブラリのGo実装です。
+統合版マインクラフト（Minecraft Bedrock Edition）のサーバー用テストライブラリです。
+
+仮想プレイヤーとしてサーバーに接続し、自然言語によるシナリオ記載でAIエージェントが自動的にテストを実行・アサーションまで行います。
 
 [WIP]
 
 ## 特徴
 
 - **仮想プレイヤーエージェント**: Bedrockサーバーに接続する仮想プレイヤー
-- **包括的アサーションフレームワーク**: 15+のアサーションカテゴリ
+- **AIエージェント**: 自然言語によるシナリオ記載でAIエージェントが動作し、アサーションまで実行
+- **プレイヤー偽装**: 本物のプレイヤーとして振る舞い、サーバーとの完全な対話が可能
+- **包括的アサーションフレームワーク**: 50+のアサーションカテゴリ
 - **イベント駆動アーキテクチャ**: チャネルベースの非同期イベント処理
 - **テストランナー**: describe/test/itスタイルのテストフレームワーク
 - **複数サーバー対応**: PowerNukkitX、PocketMine-MP、BDS等に対応
@@ -206,11 +210,12 @@ agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
 - [x] タスクランナー
 
 ### Phase 3: アサーション- [x] AssertionContext
-- [x] 基本アサーション (Position, Chat, Command, CommandOutput)
-- [x] インベントリアサーション
-- [x] プレイヤー状態アサーション (Health, Hunger, Effect, Gamemode, Permission, Tag)
-- [x] UI/表示アサーション (Title, Subtitle, Actionbar, Scoreboard(TODO))
-- [x] ブロック/エンティティアサーション
+- [x] 基本アサーション (Connection, Position, Chat, Command, CommandOutput, Form)
+- [x] プレイヤー状態系アサーション (Inventory, Health, Hunger, Effect, Gamemode, Permission, Tag)
+- [x] ワールド/ブロック系アサーション (Block, Entity, Scoreboard)
+- [x] UI/表示系アサーション (Title, Subtitle, Actionbar, Sound, Particle, Form)
+- [x] イベント系アサーション (Connection, Teleport, Dimension)
+- [x] 汎用アサーション (真偽値, 等価性, Nil, 数値比較, 文字列, コレクション)
 
 ### Phase 4: テストランナー- [x] TestRunner (describe/test/it)
 - [x] フック (BeforeAll, AfterAll, BeforeEach, AfterEach)
@@ -223,19 +228,22 @@ agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
 - [x] 柔軟なAgent管理（複数Agent対応）
 - [x] 複数サーバー種類対応 (PNX, PMMP, BDS)
 
-### Phase 5-7（予定）
-- [ ] シナリオランナー
-- [ ] LLM統合
+### Phase 5-7
+- [x] シナリオランナー
+- [x] LLM統合
 - [ ] CLI
 
 ## アサーション一覧
 
 ### 基本アサーション
+- **接続状態**: `toBeConnected`, `toBeDisconnected`
 - **Position**: `toBe`, `toBeNear`, `toReach`
 - **Chat**: `toReceive`, `notToReceive`, `toReceiveInOrder`, `toContain`
+- **Command**: `toSucceed`, `toFail`, `toContain`
 - **CommandOutput**: `toReceive`, `toReceiveAny`, `toContain`, `toMatch`, `toReceiveWithStatusCode`
 
-### プレイヤー状態アサーション
+### プレイヤー状態系アサーション
+- **Inventory**: `toHaveItem`, `toHaveItemCount`, `toBeEmpty`
 - **Health**: `toBe`, `toBeAbove`, `toBeBelow`, `toBeFull`
 - **Hunger**: `toBe`, `toBeAbove`, `toBeFull`
 - **Effect**: `toHave`, `notToHave`, `toHaveLevel`
@@ -243,13 +251,34 @@ agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
 - **Permission**: `toBeOperator`, `toHaveLevel`
 - **Tag**: `toHave`, `notToHave`
 
-### インベントリアサーション
-- **Inventory**: `toHaveItem`, `toHaveItemCount`, `toBeEmpty`
+### ワールド/ブロック系アサーション
+- **Block**: `toBe`, `toBeAt`, `toBeAir`
+- **Entity**: `toExist`, `toBeNearby`, `toHaveCount`
+- **Scoreboard**: `toHaveValue`, `toHaveObjective`, `toHaveScore`, `toHaveScoreAbove`
 
-### UI/表示アサーション
+### UI/表示系アサーション
 - **Title**: `toReceive`, `toReceiveSubtitle`, `toReceiveActionbar`, `toContain`
-- **Scoreboard**: `toHaveObjective`, `toHaveScore`, `toHaveScoreAbove`
-- **Form**: `toReceive`, `toReceiveWithTitle`, `toBeModal`, `toBeActionForm`, `toBeCustomForm`
+- **Sound**: `toPlay`, `notToPlay`
+- **Particle**: `toSpawn`
+- **Form**: `toReceive`, `toReceiveWithTitle`, `toBeModal`, `toBeActionForm`, `toBeCustomForm`, `toHaveTitle`, `toContainTitle`, `toHaveButton`, `toHaveButtons`, `toHaveContent`
+
+### イベント系アサーション
+- **Connection**: `toBeKicked`, `toBeBanned`
+- **Teleport**: `toOccur`, `toDestination`
+- **Dimension**: `toChangeTo`
+
+### タイミング系アサーション
+- **Timing**: `toCompleteWithin`, `toTimeout`
+- **Sequence**: `toOccurInOrder`
+- **Condition**: `toBeMetWithin`
+
+### 汎用アサーション
+- **真偽値**: `isTrue`, `isFalse`
+- **等価性**: `equal`, `notEqual`
+- **Nil**: `isNil`, `notNil`
+- **数値比較**: `greaterThan`, `lessThan`, `greaterThanOrEqual`, `lessThanOrEqual`, `inRange`
+- **文字列**: `contains`, `notContains`, `hasPrefix`, `hasSuffix`, `isEmpty`, `notEmpty`
+- **コレクション**: `lengthEqual`, `isEmptyCollection`, `notEmptyCollection`, `containsElement`
 
 詳細は [pkg/assertions/](pkg/assertions/) を参照してください。
 
@@ -267,8 +296,6 @@ go run main.go
 
 **注意**:
 - 各exampleディレクトリに移動してから実行してください（設定ファイルを読み込むため）
-- Minecraftサーバーが `localhost:19132` で実行されている必要があります
-
 ## ライセンス
 
 MIT License
