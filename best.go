@@ -107,6 +107,7 @@ var (
 	WithUsername          = agent.WithUsername
 	WithTimeout           = agent.WithTimeout
 	WithVersion           = agent.WithVersion
+	WithXUID              = agent.WithXUID
 	WithCommandPrefix     = agent.WithCommandPrefix
 	WithCommandSendMethod = agent.WithCommandSendMethod
 )

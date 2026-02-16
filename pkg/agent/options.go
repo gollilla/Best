@@ -45,6 +45,14 @@ func WithVersion(version string) AgentOption {
 	}
 }
 
+// WithXUID sets the player XUID (Xbox User ID)
+// If not set, a unique 16-digit XUID will be auto-generated
+func WithXUID(xuid string) AgentOption {
+	return func(a *Agent) {
+		a.options.XUID = xuid
+	}
+}
+
 // WithCommandPrefix sets the command prefix for agent mode
 func WithCommandPrefix(prefix string) AgentOption {
 	return func(a *Agent) {
