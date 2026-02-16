@@ -236,49 +236,51 @@ agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
 ## アサーション一覧
 
 ### 基本アサーション
-- **接続状態**: `toBeConnected`, `toBeDisconnected`
-- **Position**: `toBe`, `toBeNear`, `toReach`
-- **Chat**: `toReceive`, `notToReceive`, `toReceiveInOrder`, `toContain`
-- **Command**: `toSucceed`, `toFail`, `toContain`
-- **CommandOutput**: `toReceive`, `toReceiveAny`, `toContain`, `toMatch`, `toReceiveWithStatusCode`
+- **接続状態**: `ToBeConnected`, `ToBeDisconnected`
+- **Position**: `ToBe`, `ToBeNear`, `ToReach`
+- **Chat**: `ToReceive`, `NotToReceive`, `ToReceiveInOrder`, `ToContain`
+- **Command**: `ToSucceed`, `ToFail`, `ToContain`
+- **CommandOutput**: `ToReceive`, `ToReceiveAny`, `ToContain`, `ToMatch`, `ToReceiveWithStatusCode`
 
 ### プレイヤー状態系アサーション
-- **Inventory**: `toHaveItem`, `toHaveItemCount`, `toBeEmpty`
-- **Health**: `toBe`, `toBeAbove`, `toBeBelow`, `toBeFull`
-- **Hunger**: `toBe`, `toBeAbove`, `toBeFull`
-- **Effect**: `toHave`, `notToHave`, `toHaveLevel`
-- **Gamemode**: `toBe`, `toBeSurvival`, `toBeCreative`
-- **Permission**: `toBeOperator`, `toHaveLevel`
-- **Tag**: `toHave`, `notToHave`
+- **Inventory**: `ToHaveItem`, `ToHaveItemCount`, `ToBeEmpty`
+- **Health**: `ToBe`, `ToBeAbove`, `ToBeBelow`, `ToBeFull`
+- **Hunger**: `ToBe`, `ToBeAbove`, `ToBeFull`
+- **Effect**: `ToHave`, `NotToHave`, `ToHaveLevel`
+- **Gamemode**: `ToBe`, `ToBeSurvival`, `ToBeCreative`
+- **Permission**: `ToBeOperator`, `ToHaveLevel`, `ToBeAtLeast`
+- **Tag**: `ToHave`, `NotToHave`
 
 ### ワールド/ブロック系アサーション
-- **Block**: `toBe`, `toBeAt`, `toBeAir`
-- **Entity**: `toExist`, `toBeNearby`, `toHaveCount`
-- **Scoreboard**: `toHaveValue`, `toHaveObjective`, `toHaveScore`, `toHaveScoreAbove`
+- **Block**: `ToBe`, `ToBeAt`, `ToBeAir`
+- **Entity**: `ToExist`, `ToBeNearby`, `ToHaveCount`
+- **Scoreboard**: `ToHaveValue`, `ToHaveObjective`, `ToHaveScore`, `ToHaveScoreAbove`, `ToHaveScoreBelow`, `ToHaveScoreBetween`, `ToHaveDisplaySlot`, `ToHaveFakePlayerScore`, `NotToHaveObjective`
 
 ### UI/表示系アサーション
-- **Title**: `toReceive`, `toReceiveSubtitle`, `toReceiveActionbar`, `toContain`
-- **Sound**: `toPlay`, `notToPlay`
-- **Particle**: `toSpawn`
-- **Form**: `toReceive`, `toReceiveWithTitle`, `toBeModal`, `toBeActionForm`, `toBeCustomForm`, `toHaveTitle`, `toContainTitle`, `toHaveButton`, `toHaveButtons`, `toHaveContent`
+- **Title**: `ToReceive`, `ToContain`
+- **Subtitle**: `ToReceive`, `ToContain`
+- **Actionbar**: `ToReceive`, `ToContain`
+- **Sound**: `ToPlay`, `NotToPlay`
+- **Particle**: `ToSpawn`
+- **Form**: `ToReceive`, `ToReceiveWithTitle`, `ToBeModal`, `ToBeActionForm`, `ToBeCustomForm`, `ToHaveTitle`, `ToContainTitle`, `ToHaveButton`, `ToHaveButtons`, `ToHaveContent`
 
 ### イベント系アサーション
-- **Connection**: `toBeKicked`, `toBeBanned`
-- **Teleport**: `toOccur`, `toDestination`
-- **Dimension**: `toChangeTo`
+- **Connection**: `ToBeKicked`, `ToBeBanned`
+- **Teleport**: `ToOccur`, `ToDestination`
+- **Dimension**: `ToChangeTo`
 
 ### タイミング系アサーション
-- **Timing**: `toCompleteWithin`, `toTimeout`
-- **Sequence**: `toOccurInOrder`
-- **Condition**: `toBeMetWithin`
+- **Timing**: `ToCompleteWithin`, `ToTimeout`
+- **Sequence**: `ToOccurInOrder`
+- **Condition**: `ToBeMetWithin`
 
 ### 汎用アサーション
-- **真偽値**: `isTrue`, `isFalse`
-- **等価性**: `equal`, `notEqual`
-- **Nil**: `isNil`, `notNil`
-- **数値比較**: `greaterThan`, `lessThan`, `greaterThanOrEqual`, `lessThanOrEqual`, `inRange`
-- **文字列**: `contains`, `notContains`, `hasPrefix`, `hasSuffix`, `isEmpty`, `notEmpty`
-- **コレクション**: `lengthEqual`, `isEmptyCollection`, `notEmptyCollection`, `containsElement`
+- **真偽値**: `IsTrue`, `IsFalse`
+- **等価性**: `Equal`, `NotEqual`
+- **Nil**: `IsNil`, `NotNil`
+- **数値比較**: `GreaterThan`, `LessThan`, `GreaterThanOrEqual`, `LessThanOrEqual`, `InRange`
+- **文字列**: `Contains`, `NotContains`, `HasPrefix`, `HasSuffix`, `IsEmpty`, `NotEmpty`
+- **コレクション**: `LengthEqual`, `IsEmptyCollection`, `NotEmptyCollection`, `ContainsElement`
 
 詳細は [pkg/assertions/](pkg/assertions/) を参照してください。
 
