@@ -64,7 +64,10 @@ func (c *Client) Connect(opts types.ClientOptions) error {
 		// Generate unique XUID for each player to avoid UUID collision in PNX
 		// PNX generates UUID from XUID: UUID.nameUUIDFromBytes(("pocket-auth-1-xuid:" + xuid).getBytes())
 		// XUID should be 16 digits to match Xbox Live format and database constraints
-		xuid := generateXUID()
+		xuid := opts.XUID
+		if xuid == "" {
+			xuid = generateXUID()
+		}
 		dialer.IdentityData = login.IdentityData{
 			DisplayName: opts.Username,
 			Identity:    uuid.New().String(),

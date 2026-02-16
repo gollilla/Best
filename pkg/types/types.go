@@ -284,6 +284,7 @@ type ClientOptions struct {
 	Host     string
 	Port     uint16
 	Username string
+	XUID     string        // Optional: If empty, auto-generated 16-digit XUID will be used
 	Timeout  time.Duration
 	Version  string
 }
