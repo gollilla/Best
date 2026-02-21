@@ -106,7 +106,6 @@ func (p *PositionAssertion) ToBeInAir() {
 
 // ToReach waits for the player to reach the expected position within tolerance
 func (p *PositionAssertion) ToReach(ctx context.Context, expected types.Position, tolerance float64) {
-	// Default timeout if not set
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
@@ -117,12 +116,10 @@ func (p *PositionAssertion) ToReach(ctx context.Context, expected types.Position
 		tolerance = 1.0
 	}
 
-	// Check immediately
 	if distanceTo(p.agent.Position(), expected) <= tolerance {
 		return
 	}
 
-	// Wait for position update
 	filter := func(data events.EventData) bool {
 		return distanceTo(p.agent.Position(), expected) <= tolerance
 	}

@@ -21,6 +21,7 @@ type listener struct {
 	once    bool
 	handler func(EventData)
 	closed  bool
+	sync    bool // if true, handler is called directly in Emit (no goroutine)
 	mu      sync.Mutex
 }
 
@@ -34,6 +35,26 @@ func NewEmitter() *Emitter {
 // On registers an event handler
 func (e *Emitter) On(event EventName, handler func(EventData)) string {
 	return e.on(event, handler, false)
+}
+
+// OnSync registers a synchronous event handler that is called directly inside Emit,
+// before any asynchronous listeners. Use this when the handler must complete before
+// Emit returns (e.g. updating internal state that callers depend on immediately).
+func (e *Emitter) OnSync(event EventName, handler func(EventData)) string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.listeners[event] == nil {
+		e.listeners[event] = make(map[string]*listener)
+	}
+
+	id := uuid.New().String()
+	e.listeners[event][id] = &listener{
+		id:      id,
+		handler: handler,
+		sync:    true,
+	}
+	return id
 }
 
 // Once registers a one-time event handler
@@ -84,7 +105,9 @@ func (e *Emitter) Off(event EventName, id string) {
 			l.mu.Lock()
 			if !l.closed {
 				l.closed = true
-				close(l.ch)
+				if !l.sync {
+					close(l.ch)
+				}
 			}
 			l.mu.Unlock()
 			delete(listeners, id)
@@ -92,22 +115,38 @@ func (e *Emitter) Off(event EventName, id string) {
 	}
 }
 
-// Emit emits an event with data
+// Emit emits an event with data.
+// Synchronous listeners (registered via OnSync) are called directly and complete
+// before any asynchronous listeners receive the event.
 func (e *Emitter) Emit(event EventName, data EventData) {
 	e.mu.RLock()
 	listeners := e.listeners[event]
 	e.mu.RUnlock()
 
+	// Run sync listeners first, inline, so callers see their effects immediately.
 	for _, l := range listeners {
-		l.mu.Lock()
-		if !l.closed {
-			select {
-			case l.ch <- data:
-			default:
-				// Channel full, skip this listener
+		if l.sync {
+			l.mu.Lock()
+			if !l.closed {
+				l.handler(data)
 			}
+			l.mu.Unlock()
 		}
-		l.mu.Unlock()
+	}
+
+	// Then dispatch to async listeners via their channels.
+	for _, l := range listeners {
+		if !l.sync {
+			l.mu.Lock()
+			if !l.closed {
+				select {
+				case l.ch <- data:
+				default:
+					// Channel full, skip this listener
+				}
+			}
+			l.mu.Unlock()
+		}
 	}
 }
 
@@ -192,7 +231,9 @@ func (e *Emitter) RemoveAllListeners(event EventName) {
 			l.mu.Lock()
 			if !l.closed {
 				l.closed = true
-				close(l.ch)
+				if !l.sync {
+					close(l.ch)
+				}
 			}
 			l.mu.Unlock()
 		}

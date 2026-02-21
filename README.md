@@ -59,6 +59,26 @@ agent.Expect().CommandOutput().ToContain("hello", 3*time.Second)
 agent.Expect().Chat().ToReceive("hello", 3*time.Second, nil)
 ```
 
+### フォームの操作
+
+フォームはコマンド送信後にサーバーから届くので、コマンドを先に送ってから待ちます：
+
+```go
+// コマンドを送ってフォームを受け取る
+agent.Command("/menu")
+form := agent.Expect().Form().ToReceiveWithTitle("メインメニュー", 5*time.Second).GetForm()
+
+// フォームに回答する（ボタン番号 / 文字列 / 真偽値など）
+agent.SubmitForm(form.GetID(), 0)
+
+// 次のフォームを待つ
+nextForm := agent.Expect().Form().ToReceive(5 * time.Second).GetForm()
+
+// チャットでのレスポンスを待つ場合も同様
+agent.SubmitForm(nextForm.GetID(), "value")
+agent.Expect().Chat().ToReceive("完了しました", 5*time.Second, nil)
+```
+
 ### テストランナー
 
 Jest/Mocha風のテストフレームワークを提供します：
@@ -238,9 +258,9 @@ agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
 ### 基本アサーション
 - **接続状態**: `ToBeConnected`, `ToBeDisconnected`
 - **Position**: `ToBe`, `ToBeNear`, `ToReach`
-- **Chat**: `ToReceive`, `NotToReceive`, `ToReceiveInOrder`, `ToContain`
+- **Chat**: `ToReceive`, `ToReceiveSystem`, `NotToReceive`, `ToReceiveInOrder`
 - **Command**: `ToSucceed`, `ToFail`, `ToContain`
-- **CommandOutput**: `ToReceive`, `ToReceiveAny`, `ToContain`, `ToMatch`, `ToReceiveWithStatusCode`
+- **CommandOutput**: `ToReceive`, `ToReceiveAny`, `ToContain`, `ToMatch`, `ToReceiveWithStatusCode`, `ToReceiveSuccess`
 
 ### プレイヤー状態系アサーション
 - **Inventory**: `ToHaveItem`, `ToHaveItemCount`, `ToBeEmpty`
@@ -257,9 +277,9 @@ agent.Expect().Chat().ToReceive("help", 3*time.Second, nil)
 - **Scoreboard**: `ToHaveValue`, `ToHaveObjective`, `ToHaveScore`, `ToHaveScoreAbove`, `ToHaveScoreBelow`, `ToHaveScoreBetween`, `ToHaveDisplaySlot`, `ToHaveFakePlayerScore`, `NotToHaveObjective`
 
 ### UI/表示系アサーション
-- **Title**: `ToReceive`, `ToContain`
-- **Subtitle**: `ToReceive`, `ToContain`
-- **Actionbar**: `ToReceive`, `ToContain`
+- **Title**: `ToReceive`, `ToContain`, `NotToReceive`
+- **Subtitle**: `ToReceive`, `ToContain`, `NotToReceive`
+- **Actionbar**: `ToReceive`, `ToContain`, `NotToReceive`
 - **Sound**: `ToPlay`, `NotToPlay`
 - **Particle**: `ToSpawn`
 - **Form**: `ToReceive`, `ToReceiveWithTitle`, `ToBeModal`, `ToBeActionForm`, `ToBeCustomForm`, `ToHaveTitle`, `ToContainTitle`, `ToHaveButton`, `ToHaveButtons`, `ToHaveContent`

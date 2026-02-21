@@ -87,8 +87,11 @@ func NewAgent(opts ...AgentOption) *Agent {
 	// Create protocol client
 	a.client = bestprotocol.NewClient(a.emitter, a.state, a.username)
 
-	// Listen for form events and store them
-	a.emitter.On(bestevents.EventForm, func(data bestevents.EventData) {
+	// Listen for form events and store them.
+	// OnSync ensures pendingForms is updated before Emit returns, so that
+	// callers who receive the form via another listener can immediately call
+	// SubmitForm without hitting "form with ID not found".
+	a.emitter.OnSync(bestevents.EventForm, func(data bestevents.EventData) {
 		form, ok := data.(types.Form)
 		if !ok {
 			return

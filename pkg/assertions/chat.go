@@ -17,9 +17,7 @@ type ChatAssertion struct {
 }
 
 // ToReceive waits for a chat message matching the expected pattern
-// Usage: agent.Expect().Chat().ToReceive("Hello", 3*time.Second, nil)
 func (c *ChatAssertion) ToReceive(expected interface{}, timeout time.Duration, options *ChatOptions) *types.ChatMessage {
-	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -27,23 +25,17 @@ func (c *ChatAssertion) ToReceive(expected interface{}, timeout time.Duration, o
 		options = &ChatOptions{}
 	}
 
-	// Create filter
 	filter := func(data events.EventData) bool {
 		msg, ok := data.(*types.ChatMessage)
 		if !ok {
 			return false
 		}
-
-		// Check sender filter
 		if options.From != "" && msg.Sender != options.From {
 			return false
 		}
-
-		// Check message content
 		return matchesPattern(msg.Message, expected)
 	}
 
-	// Wait for matching message
 	data, err := c.agent.Emitter().WaitFor(ctx, events.EventChat, filter)
 	if err != nil {
 		fromStr := ""
@@ -57,121 +49,22 @@ func (c *ChatAssertion) ToReceive(expected interface{}, timeout time.Duration, o
 		))
 	}
 
-	msg := data.(*types.ChatMessage)
-	return msg
-}
-
-// ToReceiveWithContext waits for a chat message with a custom context
-// Use this when you need fine-grained control over the context
-func (c *ChatAssertion) ToReceiveWithContext(ctx context.Context, expected interface{}, options *ChatOptions) *types.ChatMessage {
-	// Default timeout
-	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-	}
-
-	if options == nil {
-		options = &ChatOptions{}
-	}
-
-	// Create filter
-	filter := func(data events.EventData) bool {
-		msg, ok := data.(*types.ChatMessage)
-		if !ok {
-			return false
-		}
-
-		// Check sender filter
-		if options.From != "" && msg.Sender != options.From {
-			return false
-		}
-
-		// Check message content
-		return matchesPattern(msg.Message, expected)
-	}
-
-	// Wait for matching message
-	data, err := c.agent.Emitter().WaitFor(ctx, events.EventChat, filter)
-	if err != nil {
-		fromStr := ""
-		if options.From != "" {
-			fromStr = fmt.Sprintf(" from %s", options.From)
-		}
-		panic(NewAssertionError(
-			fmt.Sprintf("Timeout waiting for chat message matching %v%s", expected, fromStr),
-			expected,
-			nil,
-		))
-	}
-
-	msg := data.(*types.ChatMessage)
-	return msg
-}
-
-// NotToReceive asserts that no matching message is received within duration
-func (c *ChatAssertion) NotToReceive(ctx context.Context, pattern interface{}, duration time.Duration) {
-	if duration == 0 {
-		duration = 3 * time.Second
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, duration)
-	defer cancel()
-
-	// Listen for messages
-	eventCh := make(chan events.EventData, 10)
-	c.agent.Emitter().On(events.EventChat, func(data events.EventData) {
-		select {
-		case eventCh <- data:
-		default:
-		}
-	})
-
-	// Wait for duration or matching message
-	for {
-		select {
-		case <-ctx.Done():
-			// Duration elapsed without matching message - success
-			return
-
-		case data := <-eventCh:
-			msg, ok := data.(*types.ChatMessage)
-			if !ok {
-				continue
-			}
-
-			if matchesPattern(msg.Message, pattern) {
-				panic(NewAssertionError(
-					fmt.Sprintf("Expected not to receive chat message matching %v, but received: %q",
-						pattern, msg.Message),
-					nil,
-					msg.Message,
-				))
-			}
-		}
-	}
+	return data.(*types.ChatMessage)
 }
 
 // ToReceiveSystem waits for a system message matching the expected pattern
-func (c *ChatAssertion) ToReceiveSystem(ctx context.Context, expected interface{}) *types.ChatMessage {
-	// Default timeout
-	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-	}
+func (c *ChatAssertion) ToReceiveSystem(expected interface{}, timeout time.Duration) *types.ChatMessage {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
 	filter := func(data events.EventData) bool {
 		msg, ok := data.(*types.ChatMessage)
 		if !ok {
 			return false
 		}
-
-		// Check if system message
 		if msg.Type != "system" {
 			return false
 		}
-
 		return matchesPattern(msg.Message, expected)
 	}
 
@@ -184,13 +77,51 @@ func (c *ChatAssertion) ToReceiveSystem(ctx context.Context, expected interface{
 		))
 	}
 
-	msg := data.(*types.ChatMessage)
-	return msg
+	return data.(*types.ChatMessage)
+}
+
+// NotToReceive asserts that no matching message is received within duration
+func (c *ChatAssertion) NotToReceive(ctx context.Context, pattern interface{}, duration time.Duration) {
+	if duration == 0 {
+		duration = 3 * time.Second
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, duration)
+	defer cancel()
+
+	eventCh := make(chan events.EventData, 10)
+	listenerID := c.agent.Emitter().On(events.EventChat, func(data events.EventData) {
+		select {
+		case eventCh <- data:
+		default:
+		}
+	})
+	defer c.agent.Emitter().Off(events.EventChat, listenerID)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case data := <-eventCh:
+			msg, ok := data.(*types.ChatMessage)
+			if !ok {
+				continue
+			}
+			if matchesPattern(msg.Message, pattern) {
+				panic(NewAssertionError(
+					fmt.Sprintf("Expected not to receive chat message matching %v, but received: %q",
+						pattern, msg.Message),
+					nil,
+					msg.Message,
+				))
+			}
+		}
+	}
 }
 
 // ToReceiveInOrder waits for messages in the specified order
 func (c *ChatAssertion) ToReceiveInOrder(ctx context.Context, expected []interface{}) []*types.ChatMessage {
-	// Default timeout
 	if _, hasDeadline := ctx.Deadline(); !hasDeadline {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
@@ -200,19 +131,18 @@ func (c *ChatAssertion) ToReceiveInOrder(ctx context.Context, expected []interfa
 	received := make([]*types.ChatMessage, 0, len(expected))
 	currentIndex := 0
 
-	// Listen for messages
 	eventCh := make(chan events.EventData, 10)
-	c.agent.Emitter().On(events.EventChat, func(data events.EventData) {
+	listenerID := c.agent.Emitter().On(events.EventChat, func(data events.EventData) {
 		select {
 		case eventCh <- data:
 		default:
 		}
 	})
+	defer c.agent.Emitter().Off(events.EventChat, listenerID)
 
 	for currentIndex < len(expected) {
 		select {
 		case <-ctx.Done():
-			// Timeout
 			panic(NewAssertionError(
 				fmt.Sprintf("Timeout: only received %d/%d messages", len(received), len(expected)),
 				expected,
@@ -224,9 +154,7 @@ func (c *ChatAssertion) ToReceiveInOrder(ctx context.Context, expected []interfa
 			if !ok {
 				continue
 			}
-
-			pattern := expected[currentIndex]
-			if matchesPattern(msg.Message, pattern) {
+			if matchesPattern(msg.Message, expected[currentIndex]) {
 				received = append(received, msg)
 				currentIndex++
 			}
@@ -238,10 +166,9 @@ func (c *ChatAssertion) ToReceiveInOrder(ctx context.Context, expected []interfa
 
 // ChatOptions provides options for chat assertions
 type ChatOptions struct {
-	From string // Filter by sender
+	From string
 }
 
-// matchesPattern checks if text matches the pattern (string or regexp)
 func matchesPattern(text string, pattern interface{}) bool {
 	switch p := pattern.(type) {
 	case string:
@@ -253,7 +180,6 @@ func matchesPattern(text string, pattern interface{}) bool {
 	}
 }
 
-// messagesContent extracts message content from a slice of chat messages
 func messagesContent(messages []*types.ChatMessage) []string {
 	content := make([]string, len(messages))
 	for i, msg := range messages {
